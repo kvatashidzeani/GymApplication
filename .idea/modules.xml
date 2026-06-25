@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="ProjectModuleManager">
+    <modules>
+      <module fileurl="file://$PROJECT_DIR$/GymApplication.iml" filepath="$PROJECT_DIR$/GymApplication.iml" />
+      <module fileurl="file://$PROJECT_DIR$/src/gym-crm.iml" filepath="$PROJECT_DIR$/src/gym-crm.iml" />
+    </modules>
+  </component>
+</project>
