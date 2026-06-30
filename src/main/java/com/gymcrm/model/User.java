@@ -1,6 +1,8 @@
 package com.gymcrm.model;
+
 public class User {
 
+    private Long userId;
     private String firstName;
     private String lastName;
     private String username;
@@ -10,12 +12,21 @@ public class User {
     public User() {}
 
     public User(String firstName, String lastName, String username, String password, boolean isActive) {
+        this(firstName, lastName, username, password, isActive, null);
+    }
+
+    public User(String firstName, String lastName, String username, String password,
+                boolean isActive, Long userId) {
         this.firstName = firstName;
         this.lastName = lastName;
         this.username = username;
         this.password = password;
         this.isActive = isActive;
+        this.userId = userId;
     }
+
+    public Long getUserId() { return userId; }
+    public void setUserId(Long userId) { this.userId = userId; }
 
     public String getFirstName() { return firstName; }
     public void setFirstName(String firstName) { this.firstName = firstName; }
@@ -34,7 +45,7 @@ public class User {
 
     @Override
     public String toString() {
-        return "com.gymcrm.model.User{firstName='" + firstName + "', lastName='" + lastName +
-                "', username='" + username + "', isActive=" + isActive + "}";
+        return "com.gymcrm.model.User{userId=" + userId + ", firstName='" + firstName +
+                "', lastName='" + lastName + "', username='" + username + "', isActive=" + isActive + "}";
     }
 }

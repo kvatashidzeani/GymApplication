@@ -1,100 +1,107 @@
-package com.gymcrm.facade;
+package com.gym.crm.storage;
 
-import com.gymcrm.model.Trainee;
-import com.gymcrm.model.Trainer;
-import com.gymcrm.model.Training;
-import com.gymcrm.service.TraineeService;
-import com.gymcrm.service.TrainerService;
-import com.gymcrm.service.TrainingService;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
+import com.gym.crm.Loader.Loader;
+import com.gym.crm.Loader.SeedDataContext;
+import lombok.Getter;
+import lombok.Setter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.core.io.Resource;
 import org.springframework.stereotype.Component;
 
+import javax.annotation.PostConstruct;
+import java.io.InputStream;
+import java.util.Comparator;
 import java.util.List;
-import java.util.Optional;
 
 @Component
-public class GymFacade {
+public class StorageInitializer {
 
-    private static final Logger logger = LoggerFactory.getLogger(GymFacade.class);
+    private final Logger log = LoggerFactory.getLogger(StorageInitializer.class);
 
-    private final TraineeService traineeService;
-    private final TrainerService trainerService;
-    private final TrainingService trainingService;
+    private  SeedDataContext seedDataContext;
+    private  List<Loader> loaders;
+
+    @Value("${data.storage}")
+    private Resource dataFile;
+
+    private final ObjectMapper mapper = new ObjectMapper()
+            .registerModule(new JavaTimeModule());
 
     @Autowired
-    public GymFacade(TraineeService traineeService,
-                     TrainerService trainerService,
-                     TrainingService trainingService) {
-        this.traineeService = traineeService;
-        this.trainerService = trainerService;
-        this.trainingService = trainingService;
+    public void setSeedDataContext(SeedDataContext seedDataContext){
+        this.seedDataContext = seedDataContext;
     }
 
-    // ── Trainee operations ──────────────────────────────────────────────────
-
-    public Trainee createTrainee(Trainee trainee) {
-        logger.info("Facade: creating trainee {} {}", trainee.getFirstName(), trainee.getLastName());
-        return traineeService.createTrainee(trainee);
+    @Autowired
+    public void setLoaders(List<Loader> loaders){
+        this.loaders = loaders;
     }
 
-    public Trainee updateTrainee(Trainee trainee) {
-        logger.info("Facade: updating trainee userId={}", trainee.getUserId());
-        return traineeService.updateTrainee(trainee);
+
+    @PostConstruct
+    public void init() {
+        try (InputStream is = dataFile.getInputStream()) {
+            SeedData data = mapper.readValue(is, SeedData.class);
+            seedDataContext.setSeedData(data);
+
+            log.info("Starting storage instantiation");
+
+
+            loaders.stream()
+                    .sorted(Comparator.comparingInt(Loader::getOrder))
+                    .forEach(loader -> {
+                        log.info("Executing loader: {}", loader.getClass().getSimpleName());
+                        loader.load();
+                        log.info("{} finished successfully", loader.getClass().getSimpleName());
+                    });
+
+            log.info("All storage objects successfully initialized.");
+        } catch (Exception e) {
+            log.error("Storage initialization failed", e);
+            throw new IllegalStateException("Could not initialize storage", e);
+        }
     }
 
-    public void deleteTrainee(Long id) {
-        logger.info("Facade: deleting trainee id={}", id);
-        traineeService.deleteTrainee(id);
+
+    @Getter
+    @Setter
+    public static class SeedData {
+        private List<String> trainingTypes;
+        private List<TraineeSeed> trainees;
+        private List<TrainerSeed> trainers;
+        private List<TrainingSeed> trainings;
     }
 
-    public Optional<Trainee> selectTrainee(Long id) {
-        logger.debug("Facade: selecting trainee id={}", id);
-        return traineeService.selectTrainee(id);
+    @Getter
+    @Setter
+    public static class TraineeSeed {
+        private String firstName;
+        private String lastName;
+        private String address;
+        private java.time.LocalDate dateOfBirth;
     }
 
-    public List<Trainee> selectAllTrainees() {
-        logger.debug("Facade: selecting all trainees");
-        return traineeService.selectAllTrainees();
+    @Getter
+    @Setter
+    public static class TrainerSeed {
+        private String firstName;
+        private String lastName;
+        private String specializationName;
     }
 
-    // ── Trainer operations ──────────────────────────────────────────────────
-
-    public Trainer createTrainer(Trainer trainer) {
-        logger.info("Facade: creating trainer {} {}", trainer.getFirstName(), trainer.getLastName());
-        return trainerService.createTrainer(trainer);
-    }
-
-    public Trainer updateTrainer(Trainer trainer) {
-        logger.info("Facade: updating trainer userId={}", trainer.getUserId());
-        return trainerService.updateTrainer(trainer);
-    }
-
-    public Optional<Trainer> selectTrainer(Long id) {
-        logger.debug("Facade: selecting trainer id={}", id);
-        return trainerService.selectTrainer(id);
-    }
-
-    public List<Trainer> selectAllTrainers() {
-        logger.debug("Facade: selecting all trainers");
-        return trainerService.selectAllTrainers();
-    }
-
-    // ── Training operations ─────────────────────────────────────────────────
-
-    public Training createTraining(Training training) {
-        logger.info("Facade: creating training {}", training.getTrainingName());
-        return trainingService.createTraining(training);
-    }
-
-    public Optional<Training> selectTraining(Long id) {
-        logger.debug("Facade: selecting training id={}", id);
-        return trainingService.selectTraining(id);
-    }
-
-    public List<Training> selectAllTrainings() {
-        logger.debug("Facade: selecting all trainings");
-        return trainingService.selectAllTrainings();
+    @Getter
+    @Setter
+    public static class TrainingSeed {
+        private Long traineeId;
+        private Long trainerId;
+        private String trainingName;
+        private String trainingTypeName;
+        private java.time.LocalDate trainingDate;
+        private Integer trainingDurationMinutes;
     }
 }

@@ -1,20 +1,18 @@
-package com.gymcrm.model;
+package com.gym.crm.model;
 
-public class TrainingType {
+import lombok.*;
+import org.springframework.stereotype.Component;
 
-    private String trainingTypeName;
-
-    public TrainingType() {}
-
-    public TrainingType(String trainingTypeName) {
-        this.trainingTypeName = trainingTypeName;
+@Getter
+@Setter
+@ToString
+@NoArgsConstructor
+@AllArgsConstructor
+public class TrainingType{
+    private Long id;
+    private String name;
+    public TrainingType(String name){
+        this.name = name;
     }
 
-    public String getTrainingTypeName() { return trainingTypeName; }
-    public void setTrainingTypeName(String trainingTypeName) { this.trainingTypeName = trainingTypeName; }
-
-    @Override
-    public String toString() {
-        return "com.gymcrm.model.TrainingType{trainingTypeName='" + trainingTypeName + "'}";
-    }
 }
