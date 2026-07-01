@@ -1,6 +1,6 @@
-package com.gym.crm.Loader;
+package com.gymcrm.Loader;
 
-import com.gym.crm.service.TraineeService;
+import com.gymcrm.service.TraineeService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;

@@ -1,8 +1,8 @@
-package com.gym.crm.Loader;
+package com.gymcrm.Loader;
 
-import com.gym.crm.model.TrainingType;
-import com.gym.crm.service.TrainingService;
-import com.gym.crm.storage.TrainingTypeStorage;
+import com.gymcrm.model.TrainingType;
+import com.gymcrm.service.TrainingService;
+import com.gymcrm.storage.TrainingTypeStorage;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -33,7 +33,7 @@ public class TrainingLoader implements Loader {
 
     @Override
     public int getOrder() {
-        return 3;
+        return 4;
     }
 
     public void load() {

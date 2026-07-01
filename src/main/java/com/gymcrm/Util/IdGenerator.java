@@ -1,4 +1,4 @@
-package com.gym.crm.Util;
+package com.gymcrm.Util;
 
 import org.springframework.stereotype.Component;
 

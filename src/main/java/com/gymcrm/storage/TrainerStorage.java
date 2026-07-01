@@ -1,6 +1,6 @@
-package com.gym.crm.storage;
+package com.gymcrm.storage;
 
-import com.gym.crm.model.Trainer;
+import com.gymcrm.model.Trainer;
 import org.springframework.stereotype.Component;
 
 import java.util.HashMap;

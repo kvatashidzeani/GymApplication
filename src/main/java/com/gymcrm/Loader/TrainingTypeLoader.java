@@ -1,7 +1,7 @@
-package com.gym.crm.Loader;
+package com.gymcrm.Loader;
 
-import com.gym.crm.model.TrainingType;
-import com.gym.crm.storage.TrainingTypeStorage;
+import com.gymcrm.model.TrainingType;
+import com.gymcrm.storage.TrainingTypeStorage;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -37,7 +37,7 @@ public class TrainingTypeLoader implements Loader {
 
         trainingTypes.forEach(name -> {
             TrainingType type = trainingTypeStorage.addTrainingType(name);
-            log.info("Seeded TrainingType: {} id={}", type.getName(), type.getId());
+            log.info("Seeded TrainingType: {} ", type.getTrainingTypeName());
         });
         log.info("Successfully parsed all of the Training Types.");
     }

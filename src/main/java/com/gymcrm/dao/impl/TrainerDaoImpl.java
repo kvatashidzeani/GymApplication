@@ -1,9 +1,9 @@
-package com.gym.crm.dao.impl;
+package com.gymcrm.dao.impl;
 
-import com.gym.crm.exceptions.TrainerNotFoundException;
-import com.gym.crm.dao.TrainerDao;
-import com.gym.crm.model.Trainer;
-import com.gym.crm.storage.TrainerStorage;
+import com.gymcrm.dao.TrainerDao;
+import com.gymcrm.exceptions.TrainerNotFoundException;
+import com.gymcrm.model.Trainer;
+import com.gymcrm.storage.TrainerStorage;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -28,24 +28,24 @@ public class TrainerDaoImpl implements TrainerDao {
     @Override
     public Trainer save(Trainer trainer) {
         log.info("Saving a trainer.");
-        if (trainer == null || trainer.getId() == null) {
+        if (trainer == null || trainer.getTrainerId() == null) {
             log.error("The trainer or the trainer id passed in is null.");
             throw new IllegalArgumentException();
         }
-        trainerStorage.getStorage().put(trainer.getId(), trainer);
-        log.info("Saved the trainer successfully with ID: {}", trainer.getId());
+        trainerStorage.getStorage().put(trainer.getTrainerId(), trainer);
+        log.info("Saved the trainer successfully with ID: {}", trainer.getTrainerId());
         return trainer;
     }
 
     @Override
     public Trainer update(Trainer trainer) {
         Map<Long, Trainer> storage = trainerStorage.getStorage();
-        if (!storage.containsKey(trainer.getId())) {
-            log.error("Cannot update. Trainer with id {} not found", trainer.getId());
+        if (!storage.containsKey(trainer.getTrainerId())) {
+            log.error("Cannot update. Trainer with id {} not found", trainer.getTrainerId());
             throw new TrainerNotFoundException();
         }
-        storage.put(trainer.getId(), trainer);
-        log.info("Updated trainer with id {}", trainer.getId());
+        storage.put(trainer.getTrainerId(), trainer);
+        log.info("Updated trainer with id {}", trainer.getTrainerId());
         return trainer;
     }
 

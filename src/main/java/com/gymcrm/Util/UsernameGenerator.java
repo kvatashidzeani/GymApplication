@@ -1,9 +1,9 @@
-package com.gym.crm.Util;
+package com.gymcrm.Util;
 
-import com.gym.crm.dao.TraineeDao;
-import com.gym.crm.dao.TrainerDao;
-import com.gym.crm.model.Trainee;
-import com.gym.crm.model.Trainer;
+import com.gymcrm.dao.TraineeDao;
+import com.gymcrm.dao.TrainerDao;
+import com.gymcrm.model.Trainee;
+import com.gymcrm.model.Trainer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;

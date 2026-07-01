@@ -1,25 +1,28 @@
-package com.gym.crm.model;
+package com.gymcrm.model;
 
-import lombok.EqualsAndHashCode;
-import lombok.Getter;
-import lombok.Setter;
-import lombok.ToString;
-
-import java.util.Objects;
-
-@Setter
-@Getter
-@ToString(callSuper = true)
-@EqualsAndHashCode(callSuper = true)
 public class Trainer extends User {
+
+    private Long trainerId;
     private TrainingType specialization;
 
-    public Trainer(Long id, String firstName, String lastName, String username, String password, boolean isActive,TrainingType specialization) {
-        super(id, firstName, lastName, username, password, isActive);
+    public Trainer() {}
+
+    public Trainer(String firstName, String lastName, String username, String password,
+                   boolean isActive, Long userId, TrainingType specialization) {
+        super(firstName, lastName, username, password, isActive);
+        this.trainerId = userId;
         this.specialization = specialization;
     }
-    public Trainer(){
-        super();
-    }
 
+    public Long getTrainerId() { return trainerId; }
+    public void setTrainerId(Long userId) { this.trainerId = userId; }
+
+    public TrainingType getSpecialization() { return specialization; }
+    public void setSpecialization(TrainingType specialization) { this.specialization = specialization; }
+
+    @Override
+    public String toString() {
+        return "Trainer{userId=" + trainerId + ", specialization='" + specialization +
+                "', " + super.toString() + "}";
+    }
 }

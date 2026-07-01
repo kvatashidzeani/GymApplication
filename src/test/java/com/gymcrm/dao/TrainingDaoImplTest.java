@@ -1,9 +1,9 @@
-package org.example.DaoTests;
+package com.gymcrm.dao;
 
 
-import com.gym.crm.dao.impl.TrainingDaoImpl;
-import com.gym.crm.model.Training;
-import com.gym.crm.storage.TrainingStorage;
+import com.gymcrm.dao.impl.TrainingDaoImpl;
+import com.gymcrm.model.Training;
+import com.gymcrm.storage.TrainingStorage;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 

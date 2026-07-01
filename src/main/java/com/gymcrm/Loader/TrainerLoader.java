@@ -1,8 +1,8 @@
-package com.gym.crm.Loader;
+package com.gymcrm.Loader;
 
-import com.gym.crm.model.TrainingType;
-import com.gym.crm.service.TrainerService;
-import com.gym.crm.storage.TrainingTypeStorage;
+import com.gymcrm.model.TrainingType;
+import com.gymcrm.service.TrainerService;
+import com.gymcrm.storage.TrainingTypeStorage;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -50,10 +50,11 @@ public class TrainerLoader implements Loader {
             TrainingType specialization = typeMap.get(t.getSpecializationName());
             if (specialization == null) {
                 log.error("Unknown specialization: {}", t.getSpecializationName());
+                return;
             }
 
             trainerService.createTrainer(t.getFirstName(), t.getLastName(), specialization);
-            log.info("Seeded Trainer: {} {} ({})", t.getFirstName(), t.getLastName(), specialization.getName());
+            log.info("Seeded Trainer: {} {} ({})", t.getFirstName(), t.getLastName(), specialization.getTrainingTypeName());
         });
     }
 }

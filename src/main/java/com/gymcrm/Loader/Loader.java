@@ -1,4 +1,4 @@
-package com.gym.crm.Loader;
+package com.gymcrm.Loader;
 
 public interface Loader {
     // the lower this number is the earliest the loader will run basically.

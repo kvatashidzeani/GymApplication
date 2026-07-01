@@ -1,20 +1,19 @@
-package com.gym.crm.service;
+package com.gymcrm.service;
 
-import com.gym.crm.exceptions.TrainerNotFoundException;
-import com.gym.crm.Util.IdGenerator;
-import com.gym.crm.Util.PasswordGenerator;
-import com.gym.crm.Util.UsernameGenerator;
-import com.gym.crm.dao.TrainerDao;
-import com.gym.crm.model.Trainer;
-import com.gym.crm.model.TrainingType;
-import com.gym.crm.model.User;
-import com.gym.crm.validators.TrainerValidator;
+import com.gymcrm.exceptions.TrainerNotFoundException;
+import com.gymcrm.Util.IdGenerator;
+import com.gymcrm.Util.PasswordGenerator;
+import com.gymcrm.Util.UsernameGenerator;
+import com.gymcrm.dao.TrainerDao;
+import com.gymcrm.model.Trainer;
+import com.gymcrm.model.TrainingType;
+import com.gymcrm.validators.TrainerValidator;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
-import javax.annotation.PostConstruct;
+import jakarta.annotation.PostConstruct;
 import java.util.List;
 import java.util.Set;
 import java.util.stream.Collectors;
@@ -62,7 +61,7 @@ public class TrainerService {
     public void initIdGenerator() {
         idGenerator.initialize(
                 trainerDao.findAll().stream()
-                        .collect(Collectors.toMap(User::getId, t -> t))
+                        .collect(Collectors.toMap(Trainer::getTrainerId, t -> t))
         );
         log.debug("IdGenerator initialized with existing trainer IDs");
     }
@@ -79,7 +78,7 @@ public class TrainerService {
         log.debug("Generated password (length: {})", password.length());
 
         Trainer trainer = new Trainer();
-        trainer.setId(idGenerator.generateNextId());
+        trainer.setTrainerId(idGenerator.generateNextId());
         trainer.setFirstName(firstName);
         trainer.setLastName(lastName);
         trainer.setUsername(username);
@@ -89,7 +88,7 @@ public class TrainerService {
 
         Trainer savedTrainer = trainerDao.save(trainer);
         log.info("Successfully created Trainer with ID: {} and username: {}",
-                savedTrainer.getId(), savedTrainer.getUsername());
+                savedTrainer.getTrainerId(), savedTrainer.getUsername());
 
         return savedTrainer;
     }
@@ -111,7 +110,7 @@ public class TrainerService {
                 });
         trainervalidator.validateTrainer(firstName, lastName, specialization);
         log.debug("Found existing Trainer: {} (current username: {})",
-                trainer.getId(), trainer.getUsername());
+                trainer.getTrainerId(), trainer.getUsername());
 
         trainer.setFirstName(firstName);
         trainer.setLastName(lastName);
@@ -145,7 +144,7 @@ public class TrainerService {
                     return new TrainerNotFoundException("Trainer not found with id: " + id);
                 });
 
-        log.debug("Found Trainer: {} (username: {})", trainer.getId(), trainer.getUsername());
+        log.debug("Found Trainer: {} (username: {})", trainer.getTrainerId(), trainer.getUsername());
         return trainer;
     }
 
@@ -175,7 +174,7 @@ public class TrainerService {
                     return new TrainerNotFoundException("Trainer not found with username: " + username);
                 });
 
-        log.debug("Found Trainer with ID: {}", trainer.getId());
+        log.debug("Found Trainer with ID: {}", trainer.getTrainerId());
         return trainer;
     }
 }

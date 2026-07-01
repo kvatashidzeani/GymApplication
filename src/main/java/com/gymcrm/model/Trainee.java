@@ -1,31 +1,35 @@
-package com.gym.crm.model;
-
-import lombok.EqualsAndHashCode;
-import lombok.Getter;
-import lombok.Setter;
-import lombok.ToString;
+package com.gymcrm.model;
 
 import java.time.LocalDate;
-import java.util.Objects;
 
-@Getter
-@Setter
-@EqualsAndHashCode(callSuper = true)
-@ToString
 public class Trainee extends User {
-    private String address;
+
+    private Long traineeId;
     private LocalDate dateOfBirth;
+    private String address;
 
+    public Trainee() {}
 
-    public Trainee(Long id, String firstName, String lastName, String username, String password, boolean isActive,String address,LocalDate dateOfBirth) {
-        super(id, firstName, lastName, username, password, isActive);
-        this.address = address;
+    public Trainee(String firstName, String lastName, String username, String password,
+                   boolean isActive, Long userId, LocalDate dateOfBirth, String address) {
+        super(firstName, lastName, username, password, isActive);
+        this.traineeId = userId;
         this.dateOfBirth = dateOfBirth;
+        this.address = address;
     }
 
-    public Trainee(){
-        super();
+    public Long getTraineeId() { return traineeId; }
+    public void setTraineeId(Long userId) { this.traineeId = userId; }
+
+    public LocalDate getDateOfBirth() { return dateOfBirth; }
+    public void setDateOfBirth(LocalDate dateOfBirth) { this.dateOfBirth = dateOfBirth; }
+
+    public String getAddress() { return address; }
+    public void setAddress(String address) { this.address = address; }
+
+    @Override
+    public String toString() {
+        return "com.gymcrm.model.Trainee{userId=" + traineeId + ", dateOfBirth=" + dateOfBirth +
+                ", address='" + address + "', " + super.toString() + "}";
     }
-
-
 }

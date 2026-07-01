@@ -1,18 +1,18 @@
-package com.gym.crm.service;
+package com.gymcrm.service;
 
-import com.gym.crm.exceptions.TraineeNotFoundException;
-import com.gym.crm.Util.IdGenerator;
-import com.gym.crm.Util.PasswordGenerator;
-import com.gym.crm.Util.UsernameGenerator;
-import com.gym.crm.dao.impl.TraineeDaoImpl;
-import com.gym.crm.model.Trainee;
-import com.gym.crm.validators.TraineeValidator;
+import com.gymcrm.exceptions.TraineeNotFoundException;
+import com.gymcrm.Util.IdGenerator;
+import com.gymcrm.Util.PasswordGenerator;
+import com.gymcrm.Util.UsernameGenerator;
+import com.gymcrm.dao.impl.TraineeDaoImpl;
+import com.gymcrm.model.Trainee;
+import com.gymcrm.validators.TraineeValidator;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
-import javax.annotation.PostConstruct;
+import jakarta.annotation.PostConstruct;
 import java.time.LocalDate;
 import java.util.List;
 import java.util.stream.Collectors;
@@ -41,7 +41,7 @@ public class TraineeService {
     public void initIdGenerator() {
         idGenerator.initialize(
                 traineeDao.findAll().stream()
-                        .collect(Collectors.toMap(Trainee::getId, t -> t))
+                        .collect(Collectors.toMap(Trainee::getTraineeId, t -> t))
         );
         log.debug("IdGenerator initialized with existing trainee IDs");
     }
@@ -79,7 +79,7 @@ public class TraineeService {
         log.debug("Generated password");
 
         Trainee trainee = new Trainee();
-        trainee.setId(idGenerator.generateNextId());
+        trainee.setTraineeId(idGenerator.generateNextId());
         trainee.setFirstName(firstName);
         trainee.setLastName(lastName);
         trainee.setUsername(username);

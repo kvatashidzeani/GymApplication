@@ -1,63 +1,129 @@
 package com.gymcrm.dao;
 
+import com.gymcrm.exceptions.TrainerNotFoundException;
+import com.gymcrm.dao.impl.TrainerDaoImpl;
 import com.gymcrm.model.Trainer;
-import com.gymcrm.storage.InMemoryStorage;
+import com.gymcrm.storage.TrainerStorage;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.*;
+import static org.mockito.Mockito.*;
 
 class TrainerDaoImplTest {
 
+    private TrainerStorage trainerStorage;
     private TrainerDaoImpl trainerDao;
-    private InMemoryStorage storage;
 
     @BeforeEach
     void setUp() {
-        storage = new InMemoryStorage();
+        trainerStorage = mock(TrainerStorage.class);
         trainerDao = new TrainerDaoImpl();
-        trainerDao.setStorage(storage);
+        trainerDao.setTrainerStorage(trainerStorage);
     }
 
     @Test
-    void save_andFindById_returnsTrainer() {
-        Trainer trainer = new Trainer("Mike", "Brown", "Mike.Brown", "pass",
-                true, 1L, "Cardio");
+    void testSaveTrainer() {
+        Trainer trainer = new Trainer();
+        trainer.setTrainerId(1L);
 
-        trainerDao.save(trainer);
-        Optional<Trainer> found = trainerDao.findById(1L);
+        Map<Long, Trainer> storageMap = new HashMap<>();
+        when(trainerStorage.getStorage()).thenReturn(storageMap);
 
-        assertTrue(found.isPresent());
-        assertEquals("Cardio", found.get().getSpecialization());
+        Trainer saved = trainerDao.save(trainer);
+
+        assertEquals(trainer, saved);
+        assertTrue(storageMap.containsKey(1L));
     }
 
     @Test
-    void update_existingTrainer_updatesFields() {
-        Trainer trainer = new Trainer("Mike", "Brown", "Mike.Brown", "pass",
-                true, 1L, "Cardio");
-        trainerDao.save(trainer);
+    void testSaveTrainerThrowsOnNull() {
+        assertThrows(IllegalArgumentException.class, () -> trainerDao.save(null));
+    }
 
-        trainer.setSpecialization("Strength");
+    @Test
+    void testUpdateTrainerSuccess() {
+        Trainer trainer = new Trainer();
+        trainer.setTrainerId(1L);
+
+        Map<Long, Trainer> storageMap = new HashMap<>();
+        storageMap.put(1L, trainer);
+        when(trainerStorage.getStorage()).thenReturn(storageMap);
+
+        trainer.setTrainerId(1L);
         Trainer updated = trainerDao.update(trainer);
 
-        assertEquals("Strength", updated.getSpecialization());
+        assertEquals(trainer, updated);
+        assertEquals(trainer, storageMap.get(1L));
     }
 
     @Test
-    void update_notFound_throwsException() {
-        Trainer trainer = new Trainer("Ghost", "Trainer", "Ghost.Trainer", "pass",
-                true, 99L, "Yoga");
+    void testUpdateTrainerNotFound() {
+        Trainer trainer = new Trainer();
+        trainer.setTrainerId(1L);
 
-        assertThrows(IllegalArgumentException.class, () -> trainerDao.update(trainer));
+        Map<Long, Trainer> storageMap = new HashMap<>();
+        when(trainerStorage.getStorage()).thenReturn(storageMap);
+
+        assertThrows(TrainerNotFoundException.class, () -> trainerDao.update(trainer));
     }
 
     @Test
-    void existsByUsername_returnsTrueWhenPresent() {
-        trainerDao.save(new Trainer("Jane", "Doe", "Jane.Doe", "pass", true, 1L, "Yoga"));
+    void testFindByIdFound() {
+        Trainer trainer = new Trainer();
+        trainer.setTrainerId(1L);
 
-        assertTrue(trainerDao.existsByUsername("Jane.Doe"));
-        assertFalse(trainerDao.existsByUsername("Unknown.User"));
+        Map<Long, Trainer> storageMap = new HashMap<>();
+        storageMap.put(1L, trainer);
+        when(trainerStorage.getStorage()).thenReturn(storageMap);
+
+        Optional<Trainer> result = trainerDao.findById(1L);
+        assertTrue(result.isPresent());
+        assertEquals(trainer, result.get());
+    }
+
+    @Test
+    void testFindByIdNotFound() {
+        Map<Long, Trainer> storageMap = new HashMap<>();
+        when(trainerStorage.getStorage()).thenReturn(storageMap);
+
+        Optional<Trainer> result = trainerDao.findById(1L);
+        assertFalse(result.isPresent());
+    }
+
+    @Test
+    void testFindAll() {
+        Trainer t1 = new Trainer();
+        t1.setTrainerId(1L);
+        Trainer t2 = new Trainer();
+        t2.setTrainerId(2L);
+
+        Map<Long, Trainer> storageMap = new HashMap<>();
+        storageMap.put(1L, t1);
+        storageMap.put(2L, t2);
+        when(trainerStorage.getStorage()).thenReturn(storageMap);
+
+        List<Trainer> all = trainerDao.findAll();
+        assertEquals(2, all.size());
+        assertTrue(all.contains(t1));
+        assertTrue(all.contains(t2));
+    }
+
+    @Test
+    void testDelete() {
+        Trainer t1 = new Trainer();
+        t1.setTrainerId(1L);
+
+        Map<Long, Trainer> storageMap = new HashMap<>();
+        storageMap.put(1L, t1);
+        when(trainerStorage.getStorage()).thenReturn(storageMap);
+
+        trainerDao.delete(1L);
+        assertFalse(storageMap.containsKey(1L));
     }
 }

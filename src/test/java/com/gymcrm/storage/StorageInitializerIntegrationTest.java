@@ -1,10 +1,6 @@
-package org.example.Storage;
+package com.gymcrm.storage;
 
-
-import com.gym.crm.config.AppConfig;
-import com.gym.crm.storage.TraineeStorage;
-import com.gym.crm.storage.TrainerStorage;
-import com.gym.crm.storage.TrainingStorage;
+import com.gymcrm.config.AppConfig;
 import org.junit.jupiter.api.Test;
 import org.springframework.context.annotation.AnnotationConfigApplicationContext;
 

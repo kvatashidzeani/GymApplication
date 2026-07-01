@@ -1,0 +1,93 @@
+{
+  "trainingTypes": [
+    "Cardio",
+    "Strength",
+    "Yoga",
+    "Crossfit",
+    "Pilates",
+    "HIIT"
+  ],
+  "trainees": [
+    { "firstName": "John", "lastName": "Doe", "address": "Tbilisi", "dateOfBirth": "1998-05-12" },
+    { "firstName": "Anna", "lastName": "Smith", "address": "Batumi", "dateOfBirth": "1999-11-02" },
+    { "firstName": "Giorgi", "lastName": "Beridze", "address": "Kutaisi", "dateOfBirth": "2001-03-19" },
+    { "firstName": "Nino", "lastName": "Kapanadze", "address": "Rustavi", "dateOfBirth": "2000-07-08" },
+    { "firstName": "David", "lastName": "Williams", "address": "London", "dateOfBirth": "1997-01-25" },
+    { "firstName": "Maria", "lastName": "Garcia", "address": "Madrid", "dateOfBirth": "1996-10-14" },
+    { "firstName": "Alex", "lastName": "Muller", "address": "Berlin", "dateOfBirth": "1995-06-30" },
+    { "firstName": "Sofia", "lastName": "Rossi", "address": "Rome", "dateOfBirth": "1999-02-11" }
+  ],
+  "trainers": [
+    { "firstName": "Mike", "lastName": "Brown", "specializationName": "Cardio" },
+    { "firstName": "Sarah", "lastName": "Johnson", "specializationName": "Strength" },
+    { "firstName": "Tom", "lastName": "Wilson", "specializationName": "Crossfit" },
+    { "firstName": "Laura", "lastName": "White", "specializationName": "Yoga" },
+    { "firstName": "Chris", "lastName": "Taylor", "specializationName": "HIIT" }
+  ],
+  "trainings": [
+    {
+      "traineeId": 7,
+      "trainerId": 15,
+      "trainingName": "Morning Cardio",
+      "trainingTypeName": "Cardio",
+      "trainingDate": "2024-11-10",
+      "trainingDurationMinutes": 45
+    },
+    {
+      "traineeId": 8,
+      "trainerId": 16,
+      "trainingName": "Strength Basics",
+      "trainingTypeName": "Strength",
+      "trainingDate": "2024-11-11",
+      "trainingDurationMinutes": 60
+    },
+    {
+      "traineeId": 9,
+      "trainerId": 17,
+      "trainingName": "Crossfit Burn",
+      "trainingTypeName": "Crossfit",
+      "trainingDate": "2024-11-12",
+      "trainingDurationMinutes": 55
+    },
+    {
+      "traineeId": 10,
+      "trainerId": 18,
+      "trainingName": "Yoga Relax",
+      "trainingTypeName": "Yoga",
+      "trainingDate": "2024-11-13",
+      "trainingDurationMinutes": 50
+    },
+    {
+      "traineeId": 11,
+      "trainerId": 19,
+      "trainingName": "HIIT Extreme",
+      "trainingTypeName": "HIIT",
+      "trainingDate": "2024-11-14",
+      "trainingDurationMinutes": 40
+    },
+    {
+      "traineeId": 12,
+      "trainerId": 15,
+      "trainingName": "Cardio Plus",
+      "trainingTypeName": "Cardio",
+      "trainingDate": "2024-11-15",
+      "trainingDurationMinutes": 35
+    },
+    {
+      "traineeId": 13,
+      "trainerId": 16,
+      "trainingName": "Strength Power",
+      "trainingTypeName": "Strength",
+      "trainingDate": "2024-11-16",
+      "trainingDurationMinutes": 70
+    },
+    {
+      "traineeId": 14,
+      "trainerId": 17,
+      "trainingName": "Crossfit Advanced",
+      "trainingTypeName": "Crossfit",
+      "trainingDate": "2024-11-17",
+      "trainingDurationMinutes": 60
+    }
+  ]
+}

@@ -1,15 +1,18 @@
-package com.gym.crm.Loader;
+package com.gymcrm.Loader;
 
-import com.gym.crm.storage.StorageInitializer;
-import lombok.Getter;
-import lombok.Setter;
-import org.springframework.beans.factory.annotation.Autowired;
+import com.gymcrm.storage.StorageInitializer;
 import org.springframework.stereotype.Component;
 
 @Component
-@Getter
-@Setter
 public class SeedDataContext {
+
     private StorageInitializer.SeedData seedData;
 
+    public StorageInitializer.SeedData getSeedData() {
+        return seedData;
+    }
+
+    public void setSeedData(StorageInitializer.SeedData seedData) {
+        this.seedData = seedData;
+    }
 }

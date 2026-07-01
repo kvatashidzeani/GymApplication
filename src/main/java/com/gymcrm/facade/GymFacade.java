@@ -1,107 +1,109 @@
-package com.gym.crm.storage;
+package com.gymcrm.facade;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
-import com.gym.crm.Loader.Loader;
-import com.gym.crm.Loader.SeedDataContext;
-import lombok.Getter;
-import lombok.Setter;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.beans.factory.annotation.Value;
-import org.springframework.core.io.Resource;
+
+import com.gymcrm.model.Trainee;
+import com.gymcrm.model.Trainer;
+import com.gymcrm.model.Training;
+import com.gymcrm.model.TrainingType;
+import com.gymcrm.service.TraineeService;
+import com.gymcrm.service.TrainerService;
+import com.gymcrm.service.TrainingService;
 import org.springframework.stereotype.Component;
 
-import javax.annotation.PostConstruct;
-import java.io.InputStream;
-import java.util.Comparator;
+import java.time.LocalDate;
 import java.util.List;
 
 @Component
-public class StorageInitializer {
+public class GymFacade {
 
-    private final Logger log = LoggerFactory.getLogger(StorageInitializer.class);
+    private final TraineeService traineeService;
+    private final TrainerService trainerService;
+    private final TrainingService trainingService;
 
-    private  SeedDataContext seedDataContext;
-    private  List<Loader> loaders;
-
-    @Value("${data.storage}")
-    private Resource dataFile;
-
-    private final ObjectMapper mapper = new ObjectMapper()
-            .registerModule(new JavaTimeModule());
-
-    @Autowired
-    public void setSeedDataContext(SeedDataContext seedDataContext){
-        this.seedDataContext = seedDataContext;
+    public GymFacade(
+            TraineeService traineeService,
+            TrainerService trainerService,
+            TrainingService trainingService
+    ) {
+        this.traineeService = traineeService;
+        this.trainerService = trainerService;
+        this.trainingService = trainingService;
     }
 
-    @Autowired
-    public void setLoaders(List<Loader> loaders){
-        this.loaders = loaders;
+    public Trainee createTrainee(String firstName,
+                                 String lastName,
+                                 LocalDate dateOfBirth,
+                                 String address) {
+        return traineeService.createTrainee(firstName, lastName, dateOfBirth, address);
     }
 
+    public Trainee updateTrainee(Long id,
+                                 String firstName,
+                                 String lastName,
+                                 LocalDate dateOfBirth,
+                                 String address,
+                                 Boolean isActive) {
+        return traineeService.updateTrainee(id, firstName, lastName, dateOfBirth, address, isActive);
+    }
 
-    @PostConstruct
-    public void init() {
-        try (InputStream is = dataFile.getInputStream()) {
-            SeedData data = mapper.readValue(is, SeedData.class);
-            seedDataContext.setSeedData(data);
+    public void deleteTrainee(Long id) {
+        traineeService.deleteTrainee(id);
+    }
 
-            log.info("Starting storage instantiation");
+    public Trainee selectTrainee(Long id) {
+        return traineeService.select(id);
+    }
 
-
-            loaders.stream()
-                    .sorted(Comparator.comparingInt(Loader::getOrder))
-                    .forEach(loader -> {
-                        log.info("Executing loader: {}", loader.getClass().getSimpleName());
-                        loader.load();
-                        log.info("{} finished successfully", loader.getClass().getSimpleName());
-                    });
-
-            log.info("All storage objects successfully initialized.");
-        } catch (Exception e) {
-            log.error("Storage initialization failed", e);
-            throw new IllegalStateException("Could not initialize storage", e);
-        }
+    public List<Trainee> selectAllTrainees() {
+        return traineeService.selectAllTrainees();
     }
 
 
-    @Getter
-    @Setter
-    public static class SeedData {
-        private List<String> trainingTypes;
-        private List<TraineeSeed> trainees;
-        private List<TrainerSeed> trainers;
-        private List<TrainingSeed> trainings;
+    public Trainer createTrainer(String firstName,
+                                 String lastName,
+                                 TrainingType specialization) {
+        return trainerService.createTrainer(firstName, lastName, specialization);
     }
 
-    @Getter
-    @Setter
-    public static class TraineeSeed {
-        private String firstName;
-        private String lastName;
-        private String address;
-        private java.time.LocalDate dateOfBirth;
+    public Trainer updateTrainer(Long id,
+                                 String firstName,
+                                 String lastName,
+                                 TrainingType specialization,
+                                 Boolean isActive) {
+        return trainerService.updateTrainer(id, firstName, lastName, specialization, isActive);
     }
 
-    @Getter
-    @Setter
-    public static class TrainerSeed {
-        private String firstName;
-        private String lastName;
-        private String specializationName;
+    public Trainer selectTrainer(Long id) {
+        return trainerService.selectTrainer(id);
     }
 
-    @Getter
-    @Setter
-    public static class TrainingSeed {
-        private Long traineeId;
-        private Long trainerId;
-        private String trainingName;
-        private String trainingTypeName;
-        private java.time.LocalDate trainingDate;
-        private Integer trainingDurationMinutes;
+    public List<Trainer> selectAllTrainers() {
+        return trainerService.selectAllTrainers();
+    }
+
+
+
+    public Training createTraining(Long traineeId,
+                                   Long trainerId,
+                                   String name,
+                                   TrainingType type,
+                                   LocalDate date,
+                                   Integer durationMinutes) {
+        return trainingService.createTraining(
+                traineeId,
+                trainerId,
+                name,
+                type,
+                date,
+                durationMinutes
+        );
+    }
+
+    public Training selectTraining(Long id) {
+        return trainingService.selectTraining(id);
+    }
+
+    public List<Training> selectAllTrainings() {
+        return trainingService.selectAllTrainings();
     }
 }

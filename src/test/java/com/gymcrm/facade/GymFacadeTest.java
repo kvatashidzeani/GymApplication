@@ -1,17 +1,15 @@
-package org.example.FacadeTest;
+package com.gymcrm.facade;
 
-import com.gym.crm.facade.GymFacade;
-import com.gym.crm.model.*;
-import com.gym.crm.Util.IdGenerator;
-import com.gym.crm.service.TraineeService;
-import com.gym.crm.service.TrainerService;
-import com.gym.crm.service.TrainingService;
+import com.gymcrm.model.*;
+import com.gymcrm.service.TraineeService;
+import com.gymcrm.service.TrainerService;
+import com.gymcrm.service.TrainingService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.*;
+
 import java.time.LocalDate;
 import java.util.List;
-import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.*;
@@ -39,27 +37,27 @@ class GymFacadeTest {
     void setUp() {
         MockitoAnnotations.openMocks(this);
 
-        trainingType = new TrainingType(1L, "Strength");
+        trainingType = new TrainingType("Strength", 1L);
         trainee = new Trainee();
-        trainee.setId(1L);
-        trainee.setFirstName("dato");
-        trainee.setLastName("jincharadze");
+        trainee.setTraineeId(1L);
+        trainee.setFirstName("Ani");
+        trainee.setLastName("Kvatashidze");
         trainee.setDateOfBirth(LocalDate.of(2000, 1, 1));
         trainee.setAddress("Tbilisi");
 
         trainer = new Trainer();
-        trainer.setId(1L);
-        trainer.setFirstName("ikako");
-        trainer.setLastName("deisadze");
+        trainer.setTrainerId(1L);
+        trainer.setFirstName("Medea");
+        trainer.setLastName("Alfaidze");
         trainer.setSpecialization(trainingType);
 
         training = new Training();
         training.setId(1L);
-        training.setTraineeId(trainee.getId());
-        training.setTrainerId(trainer.getId());
+        training.setTraineeId(trainee.getTraineeId());
+        training.setTrainerId(trainer.getTrainerId());
         training.setTrainingType(trainingType);
         training.setTrainingName("cardio");
-        training.setTrainingDate(LocalDate.now());
+        training.setTrainingDate(LocalDate.of(2024, 11, 10));
         training.setTrainingDuration(60);
     }
 
@@ -67,11 +65,11 @@ class GymFacadeTest {
     void createTraineeDelegatesToTraineeService() {
         when(traineeService.createTrainee(anyString(), anyString(), any(), anyString())).thenReturn(trainee);
 
-        Trainee result = gymFacade.createTrainee("dato", "jincharadze", LocalDate.of(2000, 1, 1), "Tbilisi");
+        Trainee result = gymFacade.createTrainee("Ani", "Kvatashidze", LocalDate.of(2000, 1, 1), "Tbilisi");
 
         assertNotNull(result);
-        assertEquals(trainee.getId(), result.getId());
-        verify(traineeService, times(1)).createTrainee("dato", "jincharadze", LocalDate.of(2000, 1, 1), "Tbilisi");
+        assertEquals(trainee.getTraineeId(), result.getTraineeId());
+        verify(traineeService, times(1)).createTrainee("Ani", "Kvatashidze", LocalDate.of(2000, 1, 1), "Tbilisi");
     }
 
     @Test
@@ -81,28 +79,30 @@ class GymFacadeTest {
         Trainer result = gymFacade.createTrainer("gio", "janelidze", trainingType);
 
         assertNotNull(result);
-        assertEquals(trainer.getId(), result.getId());
+        assertEquals(trainer.getTrainerId(), result.getTrainerId());
         verify(trainerService, times(1)).createTrainer("gio", "janelidze", trainingType);
     }
 
     @Test
     void createTrainingDelegatesToTrainingService() {
+        LocalDate trainingDate = LocalDate.of(2024, 11, 10);
+
         when(trainingService.createTraining(anyLong(), anyLong(), anyString(), any(), any(), anyInt()))
                 .thenReturn(training);
 
         Training result = gymFacade.createTraining(
-                trainee.getId(),
-                trainer.getId(),
+                trainee.getTraineeId(),
+                trainer.getTrainerId(),
                 "cardio",
                 trainingType,
-                LocalDate.now(),
+                trainingDate,
                 60
         );
 
         assertNotNull(result);
         assertEquals(training.getId(), result.getId());
         verify(trainingService, times(1))
-                .createTraining(trainee.getId(), trainer.getId(), "cardio", trainingType, training.getTrainingDate(), 60);
+                .createTraining(trainee.getTraineeId(), trainer.getTrainerId(), "cardio", trainingType, trainingDate, 60);
     }
 
     @Test
@@ -111,7 +111,7 @@ class GymFacadeTest {
 
         Trainee result = gymFacade.selectTrainee(1L);
 
-        assertEquals(trainee.getId(), result.getId());
+        assertEquals(trainee.getTraineeId(), result.getTraineeId());
         verify(traineeService, times(1)).select(1L);
     }
 
@@ -121,7 +121,7 @@ class GymFacadeTest {
 
         Trainer result = gymFacade.selectTrainer(1L);
 
-        assertEquals(trainer.getId(), result.getId());
+        assertEquals(trainer.getTrainerId(), result.getTrainerId());
         verify(trainerService, times(1)).selectTrainer(1L);
     }
 

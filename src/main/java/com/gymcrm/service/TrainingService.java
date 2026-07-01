@@ -1,17 +1,17 @@
-package com.gym.crm.service;
+package com.gymcrm.service;
 
-import com.gym.crm.exceptions.TrainingNotFoundException;
-import com.gym.crm.Util.IdGenerator;
-import com.gym.crm.dao.TrainingDao;
-import com.gym.crm.model.Training;
-import com.gym.crm.model.TrainingType;
-import com.gym.crm.validators.TrainingValidator;
+import com.gymcrm.exceptions.TrainingNotFoundException;
+import com.gymcrm.Util.IdGenerator;
+import com.gymcrm.dao.TrainingDao;
+import com.gymcrm.model.Training;
+import com.gymcrm.model.TrainingType;
+import com.gymcrm.validators.TrainingValidator;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
-import javax.annotation.PostConstruct;
+import jakarta.annotation.PostConstruct;
 import java.time.LocalDate;
 import java.util.List;
 import java.util.stream.Collectors;

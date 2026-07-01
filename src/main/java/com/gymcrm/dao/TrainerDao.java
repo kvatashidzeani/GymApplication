@@ -1,7 +1,7 @@
-package com.gym.crm.dao;
+package com.gymcrm.dao;
 
 
-import com.gym.crm.model.Trainer;
+import com.gymcrm.model.Trainer;
 
 import java.util.List;
 import java.util.Optional;
