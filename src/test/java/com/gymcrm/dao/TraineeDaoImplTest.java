@@ -1,6 +1,5 @@
 package com.gymcrm.dao;
 
-
 import com.gymcrm.exceptions.TraineeNotFoundException;
 import com.gymcrm.dao.impl.TraineeDaoImpl;
 import com.gymcrm.model.Trainee;
@@ -31,7 +30,8 @@ class TraineeDaoImplTest {
     @Test
     void testSaveTrainee() {
         Trainee trainee = new Trainee();
-        trainee.setTraineeId(1L);
+        trainee.setId(1L);
+        trainee.setUserId(10L);
 
         Map<Long, Trainee> storageMap = new HashMap<>();
         when(traineeStorage.getStorage()).thenReturn(storageMap);
@@ -47,14 +47,14 @@ class TraineeDaoImplTest {
         assertThrows(IllegalArgumentException.class, () -> traineeDao.save(null));
 
         Trainee t = new Trainee();
-        t.setTraineeId(null);
+        t.setId(null);
         assertThrows(IllegalArgumentException.class, () -> traineeDao.save(t));
     }
 
     @Test
     void testUpdateTraineeSuccess() {
         Trainee trainee = new Trainee();
-        trainee.setTraineeId(1L);
+        trainee.setId(1L);
 
         Map<Long, Trainee> storageMap = new HashMap<>();
         storageMap.put(1L, trainee);
@@ -67,7 +67,7 @@ class TraineeDaoImplTest {
     @Test
     void testUpdateTraineeNotFound() {
         Trainee trainee = new Trainee();
-        trainee.setTraineeId(1L);
+        trainee.setId(1L);
 
         Map<Long, Trainee> storageMap = new HashMap<>();
         when(traineeStorage.getStorage()).thenReturn(storageMap);
@@ -78,7 +78,7 @@ class TraineeDaoImplTest {
     @Test
     void testFindByIdFound() {
         Trainee trainee = new Trainee();
-        trainee.setTraineeId(1L);
+        trainee.setId(1L);
 
         Map<Long, Trainee> storageMap = new HashMap<>();
         storageMap.put(1L, trainee);
@@ -101,9 +101,9 @@ class TraineeDaoImplTest {
     @Test
     void testFindAll() {
         Trainee t1 = new Trainee();
-        t1.setTraineeId(1L);
+        t1.setId(1L);
         Trainee t2 = new Trainee();
-        t2.setTraineeId(2L);
+        t2.setId(2L);
 
         Map<Long, Trainee> storageMap = new HashMap<>();
         storageMap.put(1L, t1);
@@ -119,7 +119,7 @@ class TraineeDaoImplTest {
     @Test
     void testDelete() {
         Trainee t1 = new Trainee();
-        t1.setTraineeId(1L);
+        t1.setId(1L);
 
         Map<Long, Trainee> storageMap = new HashMap<>();
         storageMap.put(1L, t1);
@@ -129,4 +129,3 @@ class TraineeDaoImplTest {
         assertFalse(storageMap.containsKey(1L));
     }
 }
-

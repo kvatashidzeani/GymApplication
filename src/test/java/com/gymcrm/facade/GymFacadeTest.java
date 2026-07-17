@@ -32,29 +32,34 @@ class GymFacadeTest {
     private Trainer trainer;
     private TrainingType trainingType;
     private Training training;
+    private User traineeUser;
+    private User trainerUser;
 
     @BeforeEach
     void setUp() {
         MockitoAnnotations.openMocks(this);
 
         trainingType = new TrainingType("Strength", 1L);
+
+        traineeUser = new User("Ani", "Kvatashidze", "Ani.Kvatashidze", "pass", true, 10L);
         trainee = new Trainee();
-        trainee.setTraineeId(1L);
-        trainee.setFirstName("Ani");
-        trainee.setLastName("Kvatashidze");
+        trainee.setId(1L);
+        trainee.setUserId(10L);
+        trainee.setUser(traineeUser);
         trainee.setDateOfBirth(LocalDate.of(2000, 1, 1));
         trainee.setAddress("Tbilisi");
 
+        trainerUser = new User("Medea", "Alfaidze", "Medea.Alfaidze", "pass", true, 20L);
         trainer = new Trainer();
-        trainer.setTrainerId(1L);
-        trainer.setFirstName("Medea");
-        trainer.setLastName("Alfaidze");
+        trainer.setId(1L);
+        trainer.setUserId(20L);
+        trainer.setUser(trainerUser);
         trainer.setSpecialization(trainingType);
 
         training = new Training();
         training.setId(1L);
-        training.setTraineeId(trainee.getTraineeId());
-        training.setTrainerId(trainer.getTrainerId());
+        training.setTraineeId(trainee.getId());
+        training.setTrainerId(trainer.getId());
         training.setTrainingType(trainingType);
         training.setTrainingName("cardio");
         training.setTrainingDate(LocalDate.of(2024, 11, 10));
@@ -68,7 +73,8 @@ class GymFacadeTest {
         Trainee result = gymFacade.createTrainee("Ani", "Kvatashidze", LocalDate.of(2000, 1, 1), "Tbilisi");
 
         assertNotNull(result);
-        assertEquals(trainee.getTraineeId(), result.getTraineeId());
+        assertEquals(trainee.getId(), result.getId());
+        assertEquals(10L, result.getUserId());
         verify(traineeService, times(1)).createTrainee("Ani", "Kvatashidze", LocalDate.of(2000, 1, 1), "Tbilisi");
     }
 
@@ -79,7 +85,8 @@ class GymFacadeTest {
         Trainer result = gymFacade.createTrainer("gio", "janelidze", trainingType);
 
         assertNotNull(result);
-        assertEquals(trainer.getTrainerId(), result.getTrainerId());
+        assertEquals(trainer.getId(), result.getId());
+        assertEquals(20L, result.getUserId());
         verify(trainerService, times(1)).createTrainer("gio", "janelidze", trainingType);
     }
 
@@ -91,8 +98,8 @@ class GymFacadeTest {
                 .thenReturn(training);
 
         Training result = gymFacade.createTraining(
-                trainee.getTraineeId(),
-                trainer.getTrainerId(),
+                trainee.getId(),
+                trainer.getId(),
                 "cardio",
                 trainingType,
                 trainingDate,
@@ -102,7 +109,7 @@ class GymFacadeTest {
         assertNotNull(result);
         assertEquals(training.getId(), result.getId());
         verify(trainingService, times(1))
-                .createTraining(trainee.getTraineeId(), trainer.getTrainerId(), "cardio", trainingType, trainingDate, 60);
+                .createTraining(trainee.getId(), trainer.getId(), "cardio", trainingType, trainingDate, 60);
     }
 
     @Test
@@ -111,7 +118,7 @@ class GymFacadeTest {
 
         Trainee result = gymFacade.selectTrainee(1L);
 
-        assertEquals(trainee.getTraineeId(), result.getTraineeId());
+        assertEquals(trainee.getId(), result.getId());
         verify(traineeService, times(1)).select(1L);
     }
 
@@ -121,7 +128,7 @@ class GymFacadeTest {
 
         Trainer result = gymFacade.selectTrainer(1L);
 
-        assertEquals(trainer.getTrainerId(), result.getTrainerId());
+        assertEquals(trainer.getId(), result.getId());
         verify(trainerService, times(1)).selectTrainer(1L);
     }
 

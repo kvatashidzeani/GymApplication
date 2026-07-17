@@ -30,7 +30,8 @@ class TrainerDaoImplTest {
     @Test
     void testSaveTrainer() {
         Trainer trainer = new Trainer();
-        trainer.setTrainerId(1L);
+        trainer.setId(1L);
+        trainer.setUserId(10L);
 
         Map<Long, Trainer> storageMap = new HashMap<>();
         when(trainerStorage.getStorage()).thenReturn(storageMap);
@@ -49,13 +50,12 @@ class TrainerDaoImplTest {
     @Test
     void testUpdateTrainerSuccess() {
         Trainer trainer = new Trainer();
-        trainer.setTrainerId(1L);
+        trainer.setId(1L);
 
         Map<Long, Trainer> storageMap = new HashMap<>();
         storageMap.put(1L, trainer);
         when(trainerStorage.getStorage()).thenReturn(storageMap);
 
-        trainer.setTrainerId(1L);
         Trainer updated = trainerDao.update(trainer);
 
         assertEquals(trainer, updated);
@@ -65,7 +65,7 @@ class TrainerDaoImplTest {
     @Test
     void testUpdateTrainerNotFound() {
         Trainer trainer = new Trainer();
-        trainer.setTrainerId(1L);
+        trainer.setId(1L);
 
         Map<Long, Trainer> storageMap = new HashMap<>();
         when(trainerStorage.getStorage()).thenReturn(storageMap);
@@ -76,7 +76,7 @@ class TrainerDaoImplTest {
     @Test
     void testFindByIdFound() {
         Trainer trainer = new Trainer();
-        trainer.setTrainerId(1L);
+        trainer.setId(1L);
 
         Map<Long, Trainer> storageMap = new HashMap<>();
         storageMap.put(1L, trainer);
@@ -99,9 +99,9 @@ class TrainerDaoImplTest {
     @Test
     void testFindAll() {
         Trainer t1 = new Trainer();
-        t1.setTrainerId(1L);
+        t1.setId(1L);
         Trainer t2 = new Trainer();
-        t2.setTrainerId(2L);
+        t2.setId(2L);
 
         Map<Long, Trainer> storageMap = new HashMap<>();
         storageMap.put(1L, t1);
@@ -117,7 +117,7 @@ class TrainerDaoImplTest {
     @Test
     void testDelete() {
         Trainer t1 = new Trainer();
-        t1.setTrainerId(1L);
+        t1.setId(1L);
 
         Map<Long, Trainer> storageMap = new HashMap<>();
         storageMap.put(1L, t1);

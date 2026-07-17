@@ -1,28 +1,41 @@
 package com.gymcrm.model;
 
-public class Trainer extends User {
+/**
+ * Matches DB schema: Trainer(id, specialization FK → TrainingType, userId FK → User).
+ * Does not extend User — composition via userId.
+ */
+public class Trainer {
 
-    private Long trainerId;
+    private Long id;
     private TrainingType specialization;
+    private Long userId;
+
+    /** Convenience association (not a separate DB column). */
+    private User user;
 
     public Trainer() {}
 
-    public Trainer(String firstName, String lastName, String username, String password,
-                   boolean isActive, Long userId, TrainingType specialization) {
-        super(firstName, lastName, username, password, isActive);
-        this.trainerId = userId;
+    public Trainer(Long id, TrainingType specialization, Long userId) {
+        this.id = id;
         this.specialization = specialization;
+        this.userId = userId;
     }
 
-    public Long getTrainerId() { return trainerId; }
-    public void setTrainerId(Long userId) { this.trainerId = userId; }
+    public Long getId() { return id; }
+    public void setId(Long id) { this.id = id; }
 
     public TrainingType getSpecialization() { return specialization; }
     public void setSpecialization(TrainingType specialization) { this.specialization = specialization; }
 
+    public Long getUserId() { return userId; }
+    public void setUserId(Long userId) { this.userId = userId; }
+
+    public User getUser() { return user; }
+    public void setUser(User user) { this.user = user; }
+
     @Override
     public String toString() {
-        return "Trainer{userId=" + trainerId + ", specialization='" + specialization +
-                "', " + super.toString() + "}";
+        return "Trainer{id=" + id + ", specialization=" + specialization +
+                ", userId=" + userId + ", user=" + user + "}";
     }
 }

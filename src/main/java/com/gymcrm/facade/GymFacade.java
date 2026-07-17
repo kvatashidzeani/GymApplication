@@ -50,14 +50,42 @@ public class GymFacade {
         traineeService.deleteTrainee(id);
     }
 
+    public void deleteTraineeByUsername(String username) {
+        traineeService.deleteTraineeByUsername(username);
+    }
+
+    public List<Training> getTraineeTrainingsList(String username,
+                                                  LocalDate fromDate,
+                                                  LocalDate toDate,
+                                                  String trainerName,
+                                                  String trainingType) {
+        return traineeService.getTraineeTrainingsList(
+                username, fromDate, toDate, trainerName, trainingType);
+    }
+
     public Trainee selectTrainee(Long id) {
         return traineeService.select(id);
+    }
+
+    public Trainee selectTraineeByUsername(String username) {
+        return traineeService.selectTraineeByUsername(username);
     }
 
     public List<Trainee> selectAllTrainees() {
         return traineeService.selectAllTrainees();
     }
 
+    public boolean matchTraineeCredentials(String username, String password) {
+        return traineeService.matchTraineeCredentials(username, password);
+    }
+
+    public void changeTraineePassword(String username, String oldPassword, String newPassword) {
+        traineeService.changeTraineePassword(username, oldPassword, newPassword);
+    }
+
+    public Trainee setTraineeActive(Long id, boolean isActive) {
+        return traineeService.setTraineeActive(id, isActive);
+    }
 
     public Trainer createTrainer(String firstName,
                                  String lastName,
@@ -77,11 +105,32 @@ public class GymFacade {
         return trainerService.selectTrainer(id);
     }
 
+    public Trainer selectTrainerByUsername(String username) {
+        return trainerService.selectTrainerByUsername(username);
+    }
+
     public List<Trainer> selectAllTrainers() {
         return trainerService.selectAllTrainers();
     }
 
+    public boolean matchTrainerCredentials(String username, String password) {
+        return trainerService.matchTrainerCredentials(username, password);
+    }
 
+    public void changeTrainerPassword(String username, String oldPassword, String newPassword) {
+        trainerService.changeTrainerPassword(username, oldPassword, newPassword);
+    }
+
+    public Trainer setTrainerActive(Long id, boolean isActive) {
+        return trainerService.setTrainerActive(id, isActive);
+    }
+
+    public List<Training> getTrainerTrainingsList(String username,
+                                                  LocalDate fromDate,
+                                                  LocalDate toDate,
+                                                  String traineeName) {
+        return trainerService.getTrainerTrainingsList(username, fromDate, toDate, traineeName);
+    }
 
     public Training createTraining(Long traineeId,
                                    Long trainerId,
