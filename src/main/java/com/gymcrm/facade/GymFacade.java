@@ -8,6 +8,8 @@ import com.gymcrm.model.TrainingType;
 import com.gymcrm.service.TraineeService;
 import com.gymcrm.service.TrainerService;
 import com.gymcrm.service.TrainingService;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;
 
 import java.time.LocalDate;
@@ -15,6 +17,8 @@ import java.util.List;
 
 @Component
 public class GymFacade {
+
+    private static final Logger log = LoggerFactory.getLogger(GymFacade.class);
 
     private final TraineeService traineeService;
     private final TrainerService trainerService;
@@ -34,6 +38,7 @@ public class GymFacade {
                                  String lastName,
                                  LocalDate dateOfBirth,
                                  String address) {
+        log.info("Facade: createTrainee {} {}", firstName, lastName);
         return traineeService.createTrainee(firstName, lastName, dateOfBirth, address);
     }
 
@@ -47,10 +52,12 @@ public class GymFacade {
     }
 
     public void deleteTrainee(Long id) {
+        log.info("Facade: deleteTrainee id={}", id);
         traineeService.deleteTrainee(id);
     }
 
     public void deleteTraineeByUsername(String username) {
+        log.info("Facade: deleteTraineeByUsername {}", username);
         traineeService.deleteTraineeByUsername(username);
     }
 
@@ -61,6 +68,14 @@ public class GymFacade {
                                                   String trainingType) {
         return traineeService.getTraineeTrainingsList(
                 username, fromDate, toDate, trainerName, trainingType);
+    }
+
+    public List<Trainer> getTrainersNotAssignedToTrainee(String traineeUsername) {
+        return traineeService.getTrainersNotAssignedToTrainee(traineeUsername);
+    }
+
+    public void updateTraineeTrainersList(String traineeUsername, List<String> trainerUsernames) {
+        traineeService.updateTraineeTrainersList(traineeUsername, trainerUsernames);
     }
 
     public Trainee selectTrainee(Long id) {
@@ -90,6 +105,7 @@ public class GymFacade {
     public Trainer createTrainer(String firstName,
                                  String lastName,
                                  TrainingType specialization) {
+        log.info("Facade: createTrainer {} {}", firstName, lastName);
         return trainerService.createTrainer(firstName, lastName, specialization);
     }
 
@@ -144,6 +160,24 @@ public class GymFacade {
                 name,
                 type,
                 date,
+                durationMinutes
+        );
+    }
+
+    public Training addTraining(String traineeUsername,
+                                String trainerUsername,
+                                String trainingName,
+                                String trainingTypeName,
+                                LocalDate trainingDate,
+                                Integer durationMinutes) {
+        log.info("Facade: addTraining '{}' for trainee {} with trainer {}",
+                trainingName, traineeUsername, trainerUsername);
+        return trainingService.addTraining(
+                traineeUsername,
+                trainerUsername,
+                trainingName,
+                trainingTypeName,
+                trainingDate,
                 durationMinutes
         );
     }

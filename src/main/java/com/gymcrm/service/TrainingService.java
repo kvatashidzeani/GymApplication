@@ -5,6 +5,7 @@ import com.gymcrm.Util.IdGenerator;
 import com.gymcrm.dao.TrainingDao;
 import com.gymcrm.model.Training;
 import com.gymcrm.model.TrainingType;
+import com.gymcrm.storage.TrainingTypeStorage;
 import com.gymcrm.validators.TrainingValidator;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -24,6 +25,9 @@ public class TrainingService {
     private TrainingDao trainingDao;
     private IdGenerator idGenerator;
     private TrainingValidator trainingValidator;
+    private TraineeService traineeService;
+    private TrainerService trainerService;
+    private TrainingTypeStorage trainingTypeStorage;
 
     @Autowired
     public void setTrainingValidator(TrainingValidator trainingValidator){
@@ -37,6 +41,21 @@ public class TrainingService {
     public void setTrainingDao(TrainingDao trainingDao) {
         this.trainingDao = trainingDao;
         log.debug("TrainingDao injected into TrainingService");
+    }
+
+    @Autowired
+    public void setTraineeService(TraineeService traineeService) {
+        this.traineeService = traineeService;
+    }
+
+    @Autowired
+    public void setTrainerService(TrainerService trainerService) {
+        this.trainerService = trainerService;
+    }
+
+    @Autowired
+    public void setTrainingTypeStorage(TrainingTypeStorage trainingTypeStorage) {
+        this.trainingTypeStorage = trainingTypeStorage;
     }
 
     @PostConstruct
@@ -73,6 +92,35 @@ public class TrainingService {
         log.info("Successfully created Training with ID: {}", savedTraining.getId());
 
         return savedTraining;
+    }
+
+    /**
+     * Add training by trainee/trainer usernames and training type name.
+     */
+    public Training addTraining(String traineeUsername,
+                                String trainerUsername,
+                                String trainingName,
+                                String trainingTypeName,
+                                LocalDate trainingDate,
+                                Integer duration) {
+        log.info("Adding training '{}' for trainee {} with trainer {}",
+                trainingName, traineeUsername, trainerUsername);
+
+        if (traineeUsername == null || traineeUsername.trim().isEmpty()) {
+            throw new IllegalArgumentException("Trainee username cannot be null or empty");
+        }
+        if (trainerUsername == null || trainerUsername.trim().isEmpty()) {
+            throw new IllegalArgumentException("Trainer username cannot be null or empty");
+        }
+        if (trainingTypeName == null || trainingTypeName.trim().isEmpty()) {
+            throw new IllegalArgumentException("Training type cannot be null or empty");
+        }
+
+        Long traineeId = traineeService.selectTraineeByUsername(traineeUsername).getId();
+        Long trainerId = trainerService.selectTrainerByUsername(trainerUsername).getId();
+
+        TrainingType trainingType = trainingTypeStorage.requireByName(trainingTypeName);
+        return createTraining(traineeId, trainerId, trainingName, trainingType, trainingDate, duration);
     }
 
 

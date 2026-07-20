@@ -1,16 +1,37 @@
 package com.gymcrm.model;
 
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.Id;
+import jakarta.persistence.JoinColumn;
+import jakarta.persistence.ManyToOne;
+import jakarta.persistence.Table;
+import jakarta.persistence.Transient;
+import org.hibernate.annotations.JdbcTypeCode;
+
+import java.sql.Types;
+
 /**
- * Matches DB schema: Trainer(id, specialization FK → TrainingType, userId FK → User).
- * Does not extend User — composition via userId.
+ * Matches DB schema: trainer(id, specialization FK → training_type, user_id FK → user).
  */
+@Entity
+@Table(name = "trainer")
 public class Trainer {
 
+    @Id
+    @JdbcTypeCode(Types.INTEGER)
     private Long id;
+
+    @ManyToOne(optional = false)
+    @JoinColumn(name = "specialization", referencedColumnName = "id")
     private TrainingType specialization;
+
+    @Column(name = "user_id", nullable = false, unique = true)
+    @JdbcTypeCode(Types.INTEGER)
     private Long userId;
 
-    /** Convenience association (not a separate DB column). */
+    /** In-memory convenience link; persisted relation is user_id column. */
+    @Transient
     private User user;
 
     public Trainer() {}

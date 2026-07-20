@@ -1,6 +1,7 @@
 package com.gymcrm.service;
 
 import com.gymcrm.exceptions.TraineeNotFoundException;
+import com.gymcrm.exceptions.TrainerNotFoundException;
 import com.gymcrm.Util.IdGenerator;
 import com.gymcrm.Util.PasswordGenerator;
 import com.gymcrm.Util.UsernameGenerator;
@@ -17,11 +18,14 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import jakarta.annotation.PostConstruct;
 import java.time.LocalDate;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Locale;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 @Service
@@ -95,6 +99,7 @@ public class TraineeService {
      * 1) create User row
      * 2) create Trainee row with userId FK
      */
+    @Transactional(rollbackFor = Exception.class)
     public Trainee createTrainee(String firstName, String lastName,
                                  LocalDate dateOfBirth, String address) {
         log.info("Creating a new Trainee profile: {} {}", firstName, lastName);
@@ -128,6 +133,7 @@ public class TraineeService {
         return saved;
     }
 
+    @Transactional(rollbackFor = Exception.class)
     public Trainee updateTrainee(Long id, String firstName, String lastName,
                                  LocalDate dateOfBirth, String address, Boolean isActive) {
         log.info("Updating trainee id={}", id);
@@ -181,6 +187,11 @@ public class TraineeService {
         User user = userDao.findById(trainee.getUserId())
                 .orElseThrow(() -> new IllegalStateException("User not found for trainee id: " + id));
 
+        if (user.isActive() == isActive) {
+            log.error("Trainee id={} is already {}", id, isActive ? "active" : "inactive");
+            throw new IllegalStateException("Trainee is already " + (isActive ? "active" : "inactive"));
+        }
+
         user.setActive(isActive);
         userDao.update(user);
         trainee.setUser(user);
@@ -189,8 +200,26 @@ public class TraineeService {
         return trainee;
     }
 
+    /**
+     * Hard-delete Trainee profile: removes linked User and cascades deletion of all trainings.
+     */
+    @Transactional(rollbackFor = Exception.class)
     public void deleteTrainee(Long id) {
-        log.info("Deleting trainee id={}", id);
+        doDeleteTrainee(id);
+    }
+
+    /**
+     * Hard-delete Trainee profile by username (Trainee + User + cascade trainings).
+     */
+    @Transactional(rollbackFor = Exception.class)
+    public void deleteTraineeByUsername(String username) {
+        log.info("Deleting trainee by username: {}", username);
+        Trainee trainee = selectTraineeByUsername(username);
+        doDeleteTrainee(trainee.getId());
+    }
+
+    private void doDeleteTrainee(Long id) {
+        log.info("Hard-deleting trainee id={}", id);
 
         if (id == null) {
             throw new IllegalArgumentException("Trainee ID cannot be null");
@@ -203,20 +232,16 @@ public class TraineeService {
                 });
 
         Long userId = trainee.getUserId();
+        List<Training> trainings = trainingDao.findByTraineeId(id);
+        trainings.forEach(training -> trainingDao.delete(training.getId()));
+        log.info("Cascade-deleted {} training(s) for trainee id={}", trainings.size(), id);
+
         traineeDao.delete(id);
         if (userId != null) {
             userDao.delete(userId);
         }
-        log.info("Trainee and linked User deleted successfully: traineeId={}, userId={}", id, userId);
-    }
-
-    /**
-     * Delete Trainee profile by username (removes Trainee + linked User).
-     */
-    public void deleteTraineeByUsername(String username) {
-        log.info("Deleting trainee by username: {}", username);
-        Trainee trainee = selectTraineeByUsername(username);
-        deleteTrainee(trainee.getId());
+        log.info("Hard-deleted trainee id={}, userId={}, cascade trainings={}",
+                id, userId, trainings.size());
     }
 
     /**
@@ -241,6 +266,74 @@ public class TraineeService {
 
         log.info("Found {} trainings for trainee {} after filtering", trainings.size(), username);
         return trainings;
+    }
+
+    /**
+     * Get trainers not yet assigned to the trainee.
+     */
+    public List<Trainer> getTrainersNotAssignedToTrainee(String traineeUsername) {
+        log.info("Getting trainers not assigned to trainee: {}", traineeUsername);
+
+        if (traineeUsername == null || traineeUsername.trim().isEmpty()) {
+            throw new IllegalArgumentException("Trainee username cannot be null or empty");
+        }
+
+        Trainee trainee = selectTraineeByUsername(traineeUsername);
+        Set<Long> assignedTrainerIds = trainee.getTrainerIds();
+
+        List<Trainer> unassignedTrainers = trainerDao.findAll().stream()
+                .filter(trainer -> !assignedTrainerIds.contains(trainer.getId()))
+                .collect(Collectors.toList());
+
+        unassignedTrainers.forEach(this::attachUserToTrainer);
+        log.info("Found {} unassigned trainers for trainee {}", unassignedTrainers.size(), traineeUsername);
+        return unassignedTrainers;
+    }
+
+    /**
+     * Update trainee's assigned trainers list (many-to-many) by trainer usernames.
+     */
+    public void updateTraineeTrainersList(String traineeUsername, List<String> trainerUsernames) {
+        log.info("Updating trainers list for trainee: {}", traineeUsername);
+
+        if (traineeUsername == null || traineeUsername.trim().isEmpty()) {
+            throw new IllegalArgumentException("Trainee username cannot be null or empty");
+        }
+        if (trainerUsernames == null) {
+            throw new IllegalArgumentException("Trainer usernames list cannot be null");
+        }
+
+        Trainee trainee = selectTraineeByUsername(traineeUsername);
+        Set<Long> trainerIds = new HashSet<>();
+        for (String trainerUsername : trainerUsernames) {
+            if (trainerUsername == null || trainerUsername.trim().isEmpty()) {
+                throw new IllegalArgumentException("Trainer username cannot be null or empty");
+            }
+            trainerIds.add(resolveTrainerIdByUsername(trainerUsername.trim()));
+        }
+
+        trainee.setTrainerIds(trainerIds);
+        traineeDao.update(trainee);
+        log.info("Updated trainers list for trainee {}: {} trainer(s)", traineeUsername, trainerIds.size());
+    }
+
+    private Long resolveTrainerIdByUsername(String username) {
+        User user = userDao.findAll().stream()
+                .filter(u -> username.equals(u.getUsername()))
+                .findFirst()
+                .orElseThrow(() -> new TrainerNotFoundException("Trainer not found with username: " + username));
+
+        return trainerDao.findAll().stream()
+                .filter(t -> user.getUserId().equals(t.getUserId()))
+                .findFirst()
+                .map(Trainer::getId)
+                .orElseThrow(() -> new TrainerNotFoundException("Trainer not found with username: " + username));
+    }
+
+    private void attachUserToTrainer(Trainer trainer) {
+        if (trainer.getUserId() != null) {
+            userDao.findById(trainer.getUserId()).ifPresent(trainer::setUser);
+        }
     }
 
     private boolean matchesTrainingType(Training training, String trainingType) {

@@ -1,13 +1,36 @@
 package com.gymcrm.model;
 
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.Id;
+import jakarta.persistence.Table;
+import org.hibernate.annotations.JdbcTypeCode;
+
+import java.sql.Types;
+
+@Entity
+@Table(name = "\"user\"")
 public class User {
 
+    @Id
+    @Column(name = "id")
+    @JdbcTypeCode(Types.INTEGER)
     private Long userId;
+
+    @Column(name = "first_name", nullable = false, length = 100)
     private String firstName;
+
+    @Column(name = "last_name", nullable = false, length = 100)
     private String lastName;
+
+    @Column(nullable = false, unique = true, length = 100)
     private String username;
+
+    @Column(nullable = false, length = 255)
     private String password;
-    private boolean isActive;
+
+    @Column(name = "is_active", nullable = false)
+    private boolean isActive = true;
 
     public User() {}
 

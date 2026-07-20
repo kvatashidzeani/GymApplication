@@ -36,7 +36,7 @@ public class TrainingTypeLoader implements Loader {
         }
 
         trainingTypes.forEach(name -> {
-            TrainingType type = trainingTypeStorage.addTrainingType(name);
+            TrainingType type = trainingTypeStorage.seedTrainingType(name);
             log.info("Seeded TrainingType: {} ", type.getTrainingTypeName());
         });
         log.info("Successfully parsed all of the Training Types.");

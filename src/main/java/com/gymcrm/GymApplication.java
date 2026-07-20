@@ -9,6 +9,7 @@ import com.gymcrm.model.TrainingType;
 import com.gymcrm.storage.TraineeStorage;
 import com.gymcrm.storage.TrainerStorage;
 import com.gymcrm.storage.TrainingStorage;
+import com.gymcrm.storage.TrainingTypeStorage;
 import com.gymcrm.storage.UserStorage;
 import org.springframework.context.annotation.AnnotationConfigApplicationContext;
 
@@ -20,6 +21,7 @@ public class GymApplication {
 
         AnnotationConfigApplicationContext context = new AnnotationConfigApplicationContext(AppConfig.class);
         GymFacade facade = context.getBean(GymFacade.class);
+        TrainingTypeStorage trainingTypeStorage = context.getBean(TrainingTypeStorage.class);
 
         // 1) Create Trainee profile → User + Trainee(userId FK)
         Trainee trainee = facade.createTrainee("Ani", "Kvatashidze", LocalDate.of(2005, 6, 9), "Gora");
@@ -28,8 +30,8 @@ public class GymApplication {
                 + ", username=" + trainee.getUser().getUsername());
 
         // 2) Create Trainer profile → User + Trainer(userId FK, specialization)
-        TrainingType kungfu = new TrainingType("Kung-fu", 1L);
-        Trainer trainer = facade.createTrainer("Giorgi", "Janelidze", kungfu);
+        TrainingType cardio = trainingTypeStorage.requireByName("Cardio");
+        Trainer trainer = facade.createTrainer("Giorgi", "Janelidze", cardio);
         System.out.println("Created Trainer profile: id=" + trainer.getId()
                 + ", userId=" + trainer.getUserId()
                 + ", username=" + trainer.getUser().getUsername()
@@ -78,10 +80,10 @@ public class GymApplication {
                 + ", New match: "
                 + facade.matchTrainerCredentials(trainerUsername, newTrainerPassword));
 
-        // 9) Update Trainer profile
-        TrainingType karate = new TrainingType("Karate", 2L);
+        // 9) Update Trainer profile (specialization from constant training types only)
+        TrainingType yoga = trainingTypeStorage.requireByName("Yoga");
         Trainer updatedTrainer = facade.updateTrainer(
-                trainer.getId(), "Giorgi", "Janelidze", karate, true);
+                trainer.getId(), "Giorgi", "Janelidze", yoga, true);
         System.out.println("\nUpdated Trainer: id=" + updatedTrainer.getId()
                 + ", name=" + updatedTrainer.getUser().getFirstName() + " " + updatedTrainer.getUser().getLastName()
                 + ", specialization=" + updatedTrainer.getSpecialization().getTrainingTypeName()
@@ -101,24 +103,61 @@ public class GymApplication {
         System.out.println("\nTrainee de-activated: active=" + deactivatedTrainee.getUser().isActive());
         Trainee activatedTrainee = facade.setTraineeActive(trainee.getId(), true);
         System.out.println("Trainee activated: active=" + activatedTrainee.getUser().isActive());
+        try {
+            facade.setTraineeActive(trainee.getId(), true);
+        } catch (IllegalStateException e) {
+            System.out.println("Duplicate trainee activate rejected: " + e.getMessage());
+        }
 
         // 12) Activate / De-activate Trainer
         Trainer deactivatedTrainer = facade.setTrainerActive(trainer.getId(), false);
         System.out.println("Trainer de-activated: active=" + deactivatedTrainer.getUser().isActive());
         Trainer activatedTrainer = facade.setTrainerActive(trainer.getId(), true);
         System.out.println("Trainer activated: active=" + activatedTrainer.getUser().isActive());
+        try {
+            facade.setTrainerActive(trainer.getId(), true);
+        } catch (IllegalStateException e) {
+            System.out.println("Duplicate trainer activate rejected: " + e.getMessage());
+        }
+
+        // 16) Add training
+        LocalDate trainingDate = LocalDate.of(2024, 11, 20);
+        Training addedTraining = facade.addTraining(
+                traineeUsername,
+                trainerUsername,
+                "Morning Cardio",
+                "Cardio",
+                trainingDate,
+                45);
+        System.out.println("\nAdded training: id=" + addedTraining.getId()
+                + ", name=" + addedTraining.getTrainingName()
+                + ", date=" + addedTraining.getTrainingDate()
+                + ", duration=" + addedTraining.getTrainingDuration());
+
+        // 17) Get trainers not assigned to trainee
+        TrainingType strength = trainingTypeStorage.requireByName("Strength");
+        Trainer nikaTrainer = facade.createTrainer("Nika", "Beridze", strength);
+        String nikaUsername = nikaTrainer.getUser().getUsername();
+        List<Trainer> notAssignedTrainers = facade.getTrainersNotAssignedToTrainee(traineeUsername);
+        System.out.println("\nTrainers not assigned to " + traineeUsername + ": " + notAssignedTrainers.size());
+        notAssignedTrainers.forEach(t ->
+                System.out.println("  -> " + t.getUser().getFirstName() + " " + t.getUser().getLastName()
+                        + " (" + t.getUser().getUsername() + ")"));
+
+        // 18) Update trainee's trainers list
+        facade.updateTraineeTrainersList(traineeUsername, List.of(trainerUsername, nikaUsername));
+        System.out.println("\nUpdated trainers list for " + traineeUsername + ": "
+                + List.of(trainerUsername, nikaUsername));
+        System.out.println("Trainers still not assigned: "
+                + facade.getTrainersNotAssignedToTrainee(traineeUsername).size());
 
         // 14) Get Trainee Trainings List by username + criteria
-        LocalDate trainingDate = LocalDate.of(2024, 11, 20);
-        facade.createTraining(
-                trainee.getId(), trainer.getId(), "Morning Kung-fu",
-                kungfu, trainingDate, 45);
         List<Training> traineeTrainings = facade.getTraineeTrainingsList(
                 traineeUsername,
                 LocalDate.of(2024, 11, 1),
                 LocalDate.of(2024, 11, 30),
                 "Giorgi Janelidze",
-                "Kung-fu");
+                "Cardio");
         System.out.println("\nTrainee trainings (filtered): " + traineeTrainings.size());
         traineeTrainings.forEach(t ->
                 System.out.println("  -> " + t.getTrainingName()
@@ -137,9 +176,13 @@ public class GymApplication {
                         + " | " + t.getTrainingDate()
                         + " | traineeId=" + t.getTraineeId()));
 
-        // 13) Delete Trainee profile by username
+        // 13) Hard-delete Trainee by username (cascade deletes trainings + User)
+        int trainingsBeforeDelete = facade.selectAllTrainings().size();
         facade.deleteTraineeByUsername(traineeUsername);
-        System.out.println("\nDeleted Trainee by username: " + traineeUsername);
+        int trainingsAfterDelete = facade.selectAllTrainings().size();
+        System.out.println("\nHard-deleted Trainee by username: " + traineeUsername);
+        System.out.println("Trainings before delete: " + trainingsBeforeDelete
+                + ", after cascade delete: " + trainingsAfterDelete);
         System.out.println("Trainees remaining: " + facade.selectAllTrainees().size());
 
         System.out.println("\nAll trainees: " + facade.selectAllTrainees());

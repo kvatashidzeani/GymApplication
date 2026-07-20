@@ -6,7 +6,9 @@ import com.gymcrm.service.TrainerService;
 import com.gymcrm.service.TrainingService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.mockito.*;
+import org.mockito.InjectMocks;
+import org.mockito.Mock;
+import org.mockito.MockitoAnnotations;
 
 import java.time.LocalDate;
 import java.util.List;
@@ -16,159 +18,92 @@ import static org.mockito.Mockito.*;
 
 class GymFacadeTest {
 
-    @Mock
-    private TraineeService traineeService;
+    @Mock private TraineeService traineeService;
+    @Mock private TrainerService trainerService;
+    @Mock private TrainingService trainingService;
 
-    @Mock
-    private TrainerService trainerService;
-
-    @Mock
-    private TrainingService trainingService;
-
-    @InjectMocks
-    private GymFacade gymFacade;
+    @InjectMocks private GymFacade gymFacade;
 
     private Trainee trainee;
     private Trainer trainer;
     private TrainingType trainingType;
     private Training training;
-    private User traineeUser;
-    private User trainerUser;
 
     @BeforeEach
     void setUp() {
         MockitoAnnotations.openMocks(this);
 
-        trainingType = new TrainingType("Strength", 1L);
-
-        traineeUser = new User("Ani", "Kvatashidze", "Ani.Kvatashidze", "pass", true, 10L);
-        trainee = new Trainee();
-        trainee.setId(1L);
-        trainee.setUserId(10L);
+        User traineeUser = new User("Ani", "Kvatashidze", "Ani.Kvatashidze", "pass", true, 10L);
+        trainee = new Trainee(1L, LocalDate.of(2000, 1, 1), "Tbilisi", 10L);
         trainee.setUser(traineeUser);
-        trainee.setDateOfBirth(LocalDate.of(2000, 1, 1));
-        trainee.setAddress("Tbilisi");
 
-        trainerUser = new User("Medea", "Alfaidze", "Medea.Alfaidze", "pass", true, 20L);
-        trainer = new Trainer();
-        trainer.setId(1L);
-        trainer.setUserId(20L);
+        trainingType = new TrainingType("Strength", 1L);
+        User trainerUser = new User("Medea", "Alfaidze", "Medea.Alfaidze", "pass", true, 20L);
+        trainer = new Trainer(2L, trainingType, 20L);
         trainer.setUser(trainerUser);
-        trainer.setSpecialization(trainingType);
 
-        training = new Training();
-        training.setId(1L);
-        training.setTraineeId(trainee.getId());
-        training.setTrainerId(trainer.getId());
-        training.setTrainingType(trainingType);
-        training.setTrainingName("cardio");
-        training.setTrainingDate(LocalDate.of(2024, 11, 10));
-        training.setTrainingDuration(60);
+        training = new Training(3L, 1L, 2L, "cardio", trainingType,
+                LocalDate.of(2024, 11, 10), 60);
     }
 
     @Test
-    void createTraineeDelegatesToTraineeService() {
+    void createTraineeDelegatesToService() {
         when(traineeService.createTrainee(anyString(), anyString(), any(), anyString())).thenReturn(trainee);
 
         Trainee result = gymFacade.createTrainee("Ani", "Kvatashidze", LocalDate.of(2000, 1, 1), "Tbilisi");
 
-        assertNotNull(result);
-        assertEquals(trainee.getId(), result.getId());
-        assertEquals(10L, result.getUserId());
-        verify(traineeService, times(1)).createTrainee("Ani", "Kvatashidze", LocalDate.of(2000, 1, 1), "Tbilisi");
+        assertEquals(1L, result.getId());
+        verify(traineeService).createTrainee("Ani", "Kvatashidze", LocalDate.of(2000, 1, 1), "Tbilisi");
     }
 
     @Test
-    void createTrainerDelegatesToTrainerService() {
+    void createTrainerDelegatesToService() {
         when(trainerService.createTrainer(anyString(), anyString(), any())).thenReturn(trainer);
 
-        Trainer result = gymFacade.createTrainer("gio", "janelidze", trainingType);
+        Trainer result = gymFacade.createTrainer("Medea", "Alfaidze", trainingType);
 
-        assertNotNull(result);
-        assertEquals(trainer.getId(), result.getId());
-        assertEquals(20L, result.getUserId());
-        verify(trainerService, times(1)).createTrainer("gio", "janelidze", trainingType);
+        assertEquals(2L, result.getId());
+        verify(trainerService).createTrainer("Medea", "Alfaidze", trainingType);
     }
 
     @Test
-    void createTrainingDelegatesToTrainingService() {
-        LocalDate trainingDate = LocalDate.of(2024, 11, 10);
+    void deleteTraineeByUsernameDelegatesToService() {
+        gymFacade.deleteTraineeByUsername("Ani.Kvatashidze");
+        verify(traineeService).deleteTraineeByUsername("Ani.Kvatashidze");
+    }
 
-        when(trainingService.createTraining(anyLong(), anyLong(), anyString(), any(), any(), anyInt()))
+    @Test
+    void matchTraineeCredentialsDelegatesToService() {
+        when(traineeService.matchTraineeCredentials("Ani.Kvatashidze", "pass")).thenReturn(true);
+        assertTrue(gymFacade.matchTraineeCredentials("Ani.Kvatashidze", "pass"));
+    }
+
+    @Test
+    void addTrainingDelegatesToService() {
+        when(trainingService.addTraining(anyString(), anyString(), anyString(), anyString(), any(), anyInt()))
                 .thenReturn(training);
 
-        Training result = gymFacade.createTraining(
-                trainee.getId(),
-                trainer.getId(),
-                "cardio",
-                trainingType,
-                trainingDate,
-                60
-        );
+        Training result = gymFacade.addTraining(
+                "Ani.Kvatashidze", "Medea.Alfaidze", "cardio", "Strength",
+                LocalDate.of(2024, 11, 10), 60);
 
-        assertNotNull(result);
-        assertEquals(training.getId(), result.getId());
-        verify(trainingService, times(1))
-                .createTraining(trainee.getId(), trainer.getId(), "cardio", trainingType, trainingDate, 60);
+        assertEquals(3L, result.getId());
+        verify(trainingService).addTraining(
+                "Ani.Kvatashidze", "Medea.Alfaidze", "cardio", "Strength",
+                LocalDate.of(2024, 11, 10), 60);
     }
 
     @Test
-    void selectTraineeDelegatesToTraineeService() {
-        when(traineeService.select(anyLong())).thenReturn(trainee);
+    void getTrainersNotAssignedToTraineeDelegatesToService() {
+        when(traineeService.getTrainersNotAssignedToTrainee("Ani.Kvatashidze"))
+                .thenReturn(List.of(trainer));
 
-        Trainee result = gymFacade.selectTrainee(1L);
-
-        assertEquals(trainee.getId(), result.getId());
-        verify(traineeService, times(1)).select(1L);
-    }
-
-    @Test
-    void selectTrainerDelegatesToTrainerService() {
-        when(trainerService.selectTrainer(anyLong())).thenReturn(trainer);
-
-        Trainer result = gymFacade.selectTrainer(1L);
-
-        assertEquals(trainer.getId(), result.getId());
-        verify(trainerService, times(1)).selectTrainer(1L);
-    }
-
-    @Test
-    void selectTrainingDelegatesToTrainingService() {
-        when(trainingService.selectTraining(anyLong())).thenReturn(training);
-
-        Training result = gymFacade.selectTraining(1L);
-
-        assertEquals(training.getId(), result.getId());
-        verify(trainingService, times(1)).selectTraining(1L);
-    }
-
-    @Test
-    void selectAllTraineesDelegates() {
-        when(traineeService.selectAllTrainees()).thenReturn(List.of(trainee));
-
-        List<Trainee> result = gymFacade.selectAllTrainees();
-
-        assertEquals(1, result.size());
-        verify(traineeService, times(1)).selectAllTrainees();
-    }
-
-    @Test
-    void selectAllTrainersDelegates() {
-        when(trainerService.selectAllTrainers()).thenReturn(List.of(trainer));
-
-        List<Trainer> result = gymFacade.selectAllTrainers();
-
-        assertEquals(1, result.size());
-        verify(trainerService, times(1)).selectAllTrainers();
+        assertEquals(1, gymFacade.getTrainersNotAssignedToTrainee("Ani.Kvatashidze").size());
     }
 
     @Test
     void selectAllTrainingsDelegates() {
         when(trainingService.selectAllTrainings()).thenReturn(List.of(training));
-
-        List<Training> result = gymFacade.selectAllTrainings();
-
-        assertEquals(1, result.size());
-        verify(trainingService, times(1)).selectAllTrainings();
+        assertEquals(1, gymFacade.selectAllTrainings().size());
     }
 }

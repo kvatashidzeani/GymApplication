@@ -18,6 +18,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import jakarta.annotation.PostConstruct;
 import java.time.LocalDate;
@@ -95,6 +96,7 @@ public class TrainerService {
      * 1) create User row
      * 2) create Trainer row with userId FK + specialization
      */
+    @Transactional(rollbackFor = Exception.class)
     public Trainer createTrainer(String firstName, String lastName, TrainingType specialization) {
         log.info("Creating Trainer profile: {} {}", firstName, lastName);
         trainervalidator.validateTrainer(firstName, lastName, specialization);
@@ -125,6 +127,7 @@ public class TrainerService {
         return savedTrainer;
     }
 
+    @Transactional(rollbackFor = Exception.class)
     public Trainer updateTrainer(Long id, String firstName, String lastName,
                                  TrainingType specialization, Boolean isActive) {
         log.info("Updating Trainer profile with ID: {}", id);
@@ -176,6 +179,11 @@ public class TrainerService {
 
         User user = userDao.findById(trainer.getUserId())
                 .orElseThrow(() -> new IllegalStateException("User not found for trainer id: " + id));
+
+        if (user.isActive() == isActive) {
+            log.error("Trainer id={} is already {}", id, isActive ? "active" : "inactive");
+            throw new IllegalStateException("Trainer is already " + (isActive ? "active" : "inactive"));
+        }
 
         user.setActive(isActive);
         userDao.update(user);

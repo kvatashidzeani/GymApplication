@@ -5,7 +5,12 @@ import com.gymcrm.model.TrainingType;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Optional;
 
 @Component
 public class TrainingTypeStorage {
@@ -18,15 +23,14 @@ public class TrainingTypeStorage {
         this.idGenerator = idGenerator;
     }
 
-    public IdGenerator getIdGenerator() {
-        return idGenerator;
-    }
-
     public Map<Long, TrainingType> getStorage() {
-        return storage;
+        return Collections.unmodifiableMap(storage);
     }
 
-    public TrainingType addTrainingType(String name) {
+    /**
+     * Seed-only: loads constant training types from initial data. Not for runtime app use.
+     */
+    public TrainingType seedTrainingType(String name) {
         TrainingType type = new TrainingType(name, idGenerator.generateNextId());
         storage.put(type.getTrainingTypeId(), type);
         return type;
@@ -37,7 +41,7 @@ public class TrainingTypeStorage {
     }
 
     public List<TrainingType> findAll() {
-        return new ArrayList<>(storage.values());
+        return List.copyOf(storage.values());
     }
 
     public Optional<TrainingType> findById(Long id) {
@@ -50,5 +54,13 @@ public class TrainingTypeStorage {
             typesByName.put(type.getTrainingTypeName(), type);
         }
         return Collections.unmodifiableMap(typesByName);
+    }
+
+    public TrainingType requireByName(String name) {
+        TrainingType type = getAllByName().get(name);
+        if (type == null) {
+            throw new IllegalArgumentException("Training type not found: " + name);
+        }
+        return type;
     }
 }

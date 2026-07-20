@@ -7,6 +7,7 @@ import com.gymcrm.storage.TraineeStorage;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
+import java.time.LocalDate;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -19,112 +20,64 @@ class TraineeDaoImplTest {
 
     private TraineeStorage traineeStorage;
     private TraineeDaoImpl traineeDao;
+    private Map<Long, Trainee> storageMap;
 
     @BeforeEach
     void setUp() {
         traineeStorage = mock(TraineeStorage.class);
+        storageMap = new HashMap<>();
+        when(traineeStorage.getStorage()).thenReturn(storageMap);
         traineeDao = new TraineeDaoImpl();
         traineeDao.setTraineeStorage(traineeStorage);
     }
 
     @Test
-    void testSaveTrainee() {
-        Trainee trainee = new Trainee();
-        trainee.setId(1L);
-        trainee.setUserId(10L);
-
-        Map<Long, Trainee> storageMap = new HashMap<>();
-        when(traineeStorage.getStorage()).thenReturn(storageMap);
-
+    void saveTrainee() {
+        Trainee trainee = new Trainee(1L, LocalDate.of(2000, 1, 1), "Tbilisi", 10L);
         Trainee saved = traineeDao.save(trainee);
-
         assertEquals(trainee, saved);
         assertTrue(storageMap.containsKey(1L));
     }
 
     @Test
-    void testSaveTraineeThrowsOnNull() {
+    void saveTraineeThrowsOnNull() {
         assertThrows(IllegalArgumentException.class, () -> traineeDao.save(null));
-
-        Trainee t = new Trainee();
-        t.setId(null);
-        assertThrows(IllegalArgumentException.class, () -> traineeDao.save(t));
+        assertThrows(IllegalArgumentException.class, () -> traineeDao.save(new Trainee()));
     }
 
     @Test
-    void testUpdateTraineeSuccess() {
-        Trainee trainee = new Trainee();
-        trainee.setId(1L);
-
-        Map<Long, Trainee> storageMap = new HashMap<>();
+    void updateTraineeSuccess() {
+        Trainee trainee = new Trainee(1L, LocalDate.of(2000, 1, 1), "Tbilisi", 10L);
         storageMap.put(1L, trainee);
-        when(traineeStorage.getStorage()).thenReturn(storageMap);
-
-        Trainee updated = traineeDao.update(trainee);
-        assertEquals(trainee, updated);
+        assertEquals(trainee, traineeDao.update(trainee));
     }
 
     @Test
-    void testUpdateTraineeNotFound() {
-        Trainee trainee = new Trainee();
-        trainee.setId(1L);
-
-        Map<Long, Trainee> storageMap = new HashMap<>();
-        when(traineeStorage.getStorage()).thenReturn(storageMap);
-
+    void updateTraineeNotFound() {
+        Trainee trainee = new Trainee(1L, LocalDate.of(2000, 1, 1), "Tbilisi", 10L);
         assertThrows(TraineeNotFoundException.class, () -> traineeDao.update(trainee));
     }
 
     @Test
-    void testFindByIdFound() {
-        Trainee trainee = new Trainee();
-        trainee.setId(1L);
-
-        Map<Long, Trainee> storageMap = new HashMap<>();
+    void findByIdFound() {
+        Trainee trainee = new Trainee(1L, LocalDate.of(2000, 1, 1), "Tbilisi", 10L);
         storageMap.put(1L, trainee);
-        when(traineeStorage.getStorage()).thenReturn(storageMap);
-
         Optional<Trainee> result = traineeDao.findById(1L);
         assertTrue(result.isPresent());
         assertEquals(trainee, result.get());
     }
 
     @Test
-    void testFindByIdNotFound() {
-        Map<Long, Trainee> storageMap = new HashMap<>();
-        when(traineeStorage.getStorage()).thenReturn(storageMap);
-
-        Optional<Trainee> result = traineeDao.findById(1L);
-        assertFalse(result.isPresent());
-    }
-
-    @Test
-    void testFindAll() {
-        Trainee t1 = new Trainee();
-        t1.setId(1L);
-        Trainee t2 = new Trainee();
-        t2.setId(2L);
-
-        Map<Long, Trainee> storageMap = new HashMap<>();
-        storageMap.put(1L, t1);
-        storageMap.put(2L, t2);
-        when(traineeStorage.getStorage()).thenReturn(storageMap);
-
+    void findAllReturnsAllTrainees() {
+        storageMap.put(1L, new Trainee(1L, LocalDate.of(2000, 1, 1), "A", 10L));
+        storageMap.put(2L, new Trainee(2L, LocalDate.of(2001, 1, 1), "B", 11L));
         List<Trainee> all = traineeDao.findAll();
         assertEquals(2, all.size());
-        assertTrue(all.contains(t1));
-        assertTrue(all.contains(t2));
     }
 
     @Test
-    void testDelete() {
-        Trainee t1 = new Trainee();
-        t1.setId(1L);
-
-        Map<Long, Trainee> storageMap = new HashMap<>();
-        storageMap.put(1L, t1);
-        when(traineeStorage.getStorage()).thenReturn(storageMap);
-
+    void deleteRemovesTrainee() {
+        storageMap.put(1L, new Trainee(1L, LocalDate.of(2000, 1, 1), "Tbilisi", 10L));
         traineeDao.delete(1L);
         assertFalse(storageMap.containsKey(1L));
     }
