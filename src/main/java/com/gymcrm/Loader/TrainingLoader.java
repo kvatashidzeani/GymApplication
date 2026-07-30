@@ -95,6 +95,13 @@ public class TrainingLoader implements Loader {
                     t.getTrainingDate(),
                     t.getTrainingDurationMinutes()
             );
+
+            // Keep M2M assignment in sync so trainer profile shows trainees
+            traineeDao.findById(traineeId).ifPresent(trainee -> {
+                trainee.getTrainerIds().add(trainerId);
+                traineeDao.update(trainee);
+            });
+
             log.info("Seeded training: {} (traineeId={}, trainerId={})", t.getTrainingName(), traineeId, trainerId);
         }
         log.info("Successfully parsed the trainings.");

@@ -15,6 +15,10 @@ public class TrainingValidator {
     public void validateTraining(Long traineeId, Long trainerId, String trainingName,
                                  TrainingType trainingType, LocalDate trainingDate,
                                  Integer duration) {
+        if (traineeId == null) {
+            log.error("Trainee ID is null");
+            throw new IllegalArgumentException("Trainee ID cannot be null");
+        }
         if (trainerId == null) {
             log.error("Trainer ID is null");
             throw new IllegalArgumentException("Trainer ID cannot be null");

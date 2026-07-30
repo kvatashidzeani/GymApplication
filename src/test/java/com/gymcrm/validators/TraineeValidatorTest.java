@@ -35,8 +35,7 @@ class TraineeValidatorTest {
     }
 
     @Test
-    void validateTrainee_emptyAddress_throws() {
-        assertThrows(IllegalArgumentException.class, () ->
-                validator.validateTrainee("Ani", "Smith", LocalDate.of(2000, 1, 1), "  "));
+    void validateTrainee_optionalFieldsNull_ok() {
+        assertDoesNotThrow(() -> validator.validateTrainee("Ani", "Smith", null, null));
     }
 }

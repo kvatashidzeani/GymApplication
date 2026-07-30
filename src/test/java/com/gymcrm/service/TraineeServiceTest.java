@@ -9,6 +9,7 @@ import com.gymcrm.dao.impl.TraineeDaoImpl;
 import com.gymcrm.dao.impl.TrainerDaoImpl;
 import com.gymcrm.exceptions.TraineeNotFoundException;
 import com.gymcrm.model.Trainee;
+import com.gymcrm.model.Trainer;
 import com.gymcrm.model.Training;
 import com.gymcrm.model.User;
 import com.gymcrm.validators.TraineeValidator;
@@ -62,6 +63,7 @@ class TraineeServiceTest {
         when(idGenerator.generateNextId()).thenReturn(1L, 2L);
         when(usernameGenerator.generateUsername("Ani", "Smith")).thenReturn("Ani.Smith");
         when(passwordGenerator.generatePassword()).thenReturn("secret");
+        when(trainerDao.findAll()).thenReturn(List.of());
         when(userDao.save(any(User.class))).thenAnswer(inv -> inv.getArgument(0));
         when(traineeDao.save(any(Trainee.class))).thenAnswer(inv -> inv.getArgument(0));
 
@@ -74,6 +76,20 @@ class TraineeServiceTest {
         assertEquals("Ani.Smith", result.getUser().getUsername());
         verify(userDao).save(any(User.class));
         verify(traineeDao).save(any(Trainee.class));
+    }
+
+    @Test
+    void createTrainee_rejectsIfAlreadyTrainer() {
+        User trainerUser = new User("Ani", "Smith", "Ani.Smith", "x", true, 5L);
+        Trainer trainer = new Trainer(10L, null, 5L);
+        when(trainerDao.findAll()).thenReturn(List.of(trainer));
+        when(userDao.findById(5L)).thenReturn(Optional.of(trainerUser));
+
+        IllegalArgumentException ex = assertThrows(IllegalArgumentException.class,
+                () -> traineeService.createTrainee("Ani", "Smith", null, null));
+
+        assertTrue(ex.getMessage().contains("already registered as trainer"));
+        verify(traineeDao, never()).save(any());
     }
 
     @Test

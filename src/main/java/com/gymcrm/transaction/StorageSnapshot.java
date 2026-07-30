@@ -90,7 +90,6 @@ final class StorageSnapshot {
         copy.setId(trainee.getId());
         copy.setDateOfBirth(trainee.getDateOfBirth());
         copy.setAddress(trainee.getAddress());
-        copy.setUserId(trainee.getUserId());
         copy.setTrainerIds(new HashSet<>(trainee.getTrainerIds()));
         copy.setUser(copyUser(trainee.getUser()));
         return copy;
@@ -103,7 +102,6 @@ final class StorageSnapshot {
         Trainer copy = new Trainer();
         copy.setId(trainer.getId());
         copy.setSpecialization(trainer.getSpecialization());
-        copy.setUserId(trainer.getUserId());
         copy.setUser(copyUser(trainer.getUser()));
         return copy;
     }

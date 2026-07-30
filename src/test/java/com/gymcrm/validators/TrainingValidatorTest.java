@@ -25,6 +25,12 @@ class TrainingValidatorTest {
     }
 
     @Test
+    void validateTraining_nullTraineeId_throws() {
+        assertThrows(IllegalArgumentException.class, () -> validator.validateTraining(
+                null, 2L, "Session", new TrainingType("Cardio", 1L), LocalDate.now(), 60));
+    }
+
+    @Test
     void validateTraining_nullTrainerId_throws() {
         assertThrows(IllegalArgumentException.class, () -> validator.validateTraining(
                 1L, null, "Session", new TrainingType("Cardio", 1L), LocalDate.now(), 60));

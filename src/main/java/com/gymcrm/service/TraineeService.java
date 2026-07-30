@@ -105,6 +105,7 @@ public class TraineeService {
         log.info("Creating a new Trainee profile: {} {}", firstName, lastName);
 
         traineeValidator.validateTrainee(firstName, lastName, dateOfBirth, address);
+        ensureNotRegisteredAsOtherRole(firstName, lastName);
 
         String username = usernameGenerator.generateUsername(firstName, lastName);
         String password = passwordGenerator.generatePassword();
@@ -269,10 +270,10 @@ public class TraineeService {
     }
 
     /**
-     * Get trainers not yet assigned to the trainee.
+     * Get active trainers not yet assigned to the trainee.
      */
     public List<Trainer> getTrainersNotAssignedToTrainee(String traineeUsername) {
-        log.info("Getting trainers not assigned to trainee: {}", traineeUsername);
+        log.info("Getting active trainers not assigned to trainee: {}", traineeUsername);
 
         if (traineeUsername == null || traineeUsername.trim().isEmpty()) {
             throw new IllegalArgumentException("Trainee username cannot be null or empty");
@@ -283,10 +284,11 @@ public class TraineeService {
 
         List<Trainer> unassignedTrainers = trainerDao.findAll().stream()
                 .filter(trainer -> !assignedTrainerIds.contains(trainer.getId()))
+                .peek(this::attachUserToTrainer)
+                .filter(trainer -> trainer.getUser() != null && trainer.getUser().isActive())
                 .collect(Collectors.toList());
 
-        unassignedTrainers.forEach(this::attachUserToTrainer);
-        log.info("Found {} unassigned trainers for trainee {}", unassignedTrainers.size(), traineeUsername);
+        log.info("Found {} unassigned active trainers for trainee {}", unassignedTrainers.size(), traineeUsername);
         return unassignedTrainers;
     }
 
@@ -328,6 +330,31 @@ public class TraineeService {
                 .findFirst()
                 .map(Trainer::getId)
                 .orElseThrow(() -> new TrainerNotFoundException("Trainer not found with username: " + username));
+    }
+
+    /**
+     * A person cannot be registered as both trainee and trainer (same first + last name).
+     */
+    private void ensureNotRegisteredAsOtherRole(String firstName, String lastName) {
+        for (Trainer trainer : trainerDao.findAll()) {
+            if (trainer.getUserId() == null) {
+                continue;
+            }
+            User user = userDao.findById(trainer.getUserId()).orElse(null);
+            if (user != null && namesEqual(user.getFirstName(), firstName)
+                    && namesEqual(user.getLastName(), lastName)) {
+                log.error("Cannot register trainee: already registered as trainer {} {}", firstName, lastName);
+                throw new IllegalArgumentException(
+                        "Cannot register as trainee: already registered as trainer with the same first and last name");
+            }
+        }
+    }
+
+    private static boolean namesEqual(String left, String right) {
+        if (left == null || right == null) {
+            return false;
+        }
+        return left.trim().equalsIgnoreCase(right.trim());
     }
 
     private void attachUserToTrainer(Trainer trainer) {

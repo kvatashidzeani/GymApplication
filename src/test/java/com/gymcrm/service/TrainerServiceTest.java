@@ -8,6 +8,7 @@ import com.gymcrm.dao.TrainerDao;
 import com.gymcrm.dao.TrainingDao;
 import com.gymcrm.dao.UserDao;
 import com.gymcrm.exceptions.TrainerNotFoundException;
+import com.gymcrm.model.Trainee;
 import com.gymcrm.model.Trainer;
 import com.gymcrm.model.TrainingType;
 import com.gymcrm.model.User;
@@ -26,6 +27,7 @@ class TrainerServiceTest {
 
     private TrainerService trainerService;
     private TrainerDao trainerDao;
+    private TraineeDao traineeDao;
     private UserDao userDao;
     private IdGenerator idGenerator;
     private UsernameGenerator usernameGenerator;
@@ -35,6 +37,7 @@ class TrainerServiceTest {
     @BeforeEach
     void setUp() {
         trainerDao = mock(TrainerDao.class);
+        traineeDao = mock(TraineeDao.class);
         userDao = mock(UserDao.class);
         idGenerator = mock(IdGenerator.class);
         usernameGenerator = mock(UsernameGenerator.class);
@@ -44,7 +47,7 @@ class TrainerServiceTest {
         trainerService = new TrainerService();
         trainerService.setTrainerDao(trainerDao);
         trainerService.setUserDao(userDao);
-        trainerService.setTraineeDao(mock(TraineeDao.class));
+        trainerService.setTraineeDao(traineeDao);
         trainerService.setTrainingDao(mock(TrainingDao.class));
         trainerService.setIdGenerator(idGenerator);
         trainerService.setUsernameGenerator(usernameGenerator);
@@ -58,6 +61,7 @@ class TrainerServiceTest {
         when(idGenerator.generateNextId()).thenReturn(10L, 20L);
         when(usernameGenerator.generateUsername("Giorgi", "Janelidze")).thenReturn("Giorgi.Janelidze");
         when(passwordGenerator.generatePassword()).thenReturn("secret");
+        when(traineeDao.findAll()).thenReturn(List.of());
         when(userDao.save(any(User.class))).thenAnswer(inv -> inv.getArgument(0));
         when(trainerDao.save(any(Trainer.class))).thenAnswer(inv -> inv.getArgument(0));
 
@@ -68,6 +72,21 @@ class TrainerServiceTest {
         assertEquals(cardio, result.getSpecialization());
         verify(userDao).save(any(User.class));
         verify(trainerDao).save(any(Trainer.class));
+    }
+
+    @Test
+    void createTrainer_rejectsIfAlreadyTrainee() {
+        TrainingType cardio = new TrainingType("Cardio", 1L);
+        User traineeUser = new User("Giorgi", "Janelidze", "Giorgi.Janelidze", "x", true, 5L);
+        Trainee trainee = new Trainee(10L, null, null, 5L);
+        when(traineeDao.findAll()).thenReturn(List.of(trainee));
+        when(userDao.findById(5L)).thenReturn(Optional.of(traineeUser));
+
+        IllegalArgumentException ex = assertThrows(IllegalArgumentException.class,
+                () -> trainerService.createTrainer("Giorgi", "Janelidze", cardio));
+
+        assertTrue(ex.getMessage().contains("already registered as trainee"));
+        verify(trainerDao, never()).save(any());
     }
 
     @Test
@@ -109,8 +128,8 @@ class TrainerServiceTest {
     void selectTrainerByUsername_success() {
         User user = new User("Giorgi", "Janelidze", "Giorgi.Janelidze", "pass", true, 10L);
         Trainer trainer = new Trainer(1L, new TrainingType("Cardio", 1L), 10L);
+        when(userDao.findAll()).thenReturn(List.of(user));
         when(trainerDao.findAll()).thenReturn(List.of(trainer));
-        when(userDao.findById(10L)).thenReturn(Optional.of(user));
 
         Trainer result = trainerService.selectTrainerByUsername("Giorgi.Janelidze");
 

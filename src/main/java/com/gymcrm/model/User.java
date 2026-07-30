@@ -3,11 +3,16 @@ package com.gymcrm.model;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.Id;
+import jakarta.persistence.OneToOne;
 import jakarta.persistence.Table;
 import org.hibernate.annotations.JdbcTypeCode;
 
 import java.sql.Types;
 
+/**
+ * Parent table for Trainee and Trainer (one-to-one).
+ * A User may be linked to at most one Trainee or one Trainer.
+ */
 @Entity
 @Table(name = "\"user\"")
 public class User {
@@ -31,6 +36,14 @@ public class User {
 
     @Column(name = "is_active", nullable = false)
     private boolean isActive = true;
+
+    /** Inverse side of Trainee → User (child owns FK user_id). */
+    @OneToOne(mappedBy = "user")
+    private Trainee trainee;
+
+    /** Inverse side of Trainer → User (child owns FK user_id). */
+    @OneToOne(mappedBy = "user")
+    private Trainer trainer;
 
     public User() {}
 
@@ -65,6 +78,12 @@ public class User {
 
     public boolean isActive() { return isActive; }
     public void setActive(boolean active) { isActive = active; }
+
+    public Trainee getTrainee() { return trainee; }
+    public void setTrainee(Trainee trainee) { this.trainee = trainee; }
+
+    public Trainer getTrainer() { return trainer; }
+    public void setTrainer(Trainer trainer) { this.trainer = trainer; }
 
     @Override
     public String toString() {

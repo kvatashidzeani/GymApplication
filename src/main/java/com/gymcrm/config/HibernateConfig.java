@@ -10,7 +10,6 @@ import org.springframework.orm.jpa.JpaTransactionManager;
 import org.springframework.orm.jpa.LocalContainerEntityManagerFactoryBean;
 import org.springframework.orm.jpa.vendor.HibernateJpaVendorAdapter;
 import org.springframework.transaction.PlatformTransactionManager;
-
 import javax.sql.DataSource;
 import java.util.Properties;
 
@@ -65,7 +64,6 @@ public class HibernateConfig {
         factory.setJpaProperties(jpaProperties());
         return factory;
     }
-
     @Bean(name = "jpaTransactionManager")
     public PlatformTransactionManager jpaTransactionManager(EntityManagerFactory entityManagerFactory) {
         return new JpaTransactionManager(entityManagerFactory);

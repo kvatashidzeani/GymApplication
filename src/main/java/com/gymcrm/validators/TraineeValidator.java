@@ -21,17 +21,10 @@ public class TraineeValidator {
             log.error("Last name cannot be null or empty");
             throw new IllegalArgumentException("Last name cannot be null or empty");
         }
-        if (dateOfBirth == null) {
-            log.error("Date of birth cannot be null");
-            throw new IllegalArgumentException("Date of birth cannot be null");
-        }
-        if (dateOfBirth.isAfter(LocalDate.now())) {
+        // dateOfBirth and address are optional for registration
+        if (dateOfBirth != null && dateOfBirth.isAfter(LocalDate.now())) {
             log.error("Date of birth cannot be in the future");
             throw new IllegalArgumentException("Date of birth cannot be in the future");
-        }
-        if (address == null || address.trim().isEmpty()) {
-            log.error("Address cannot be null or empty");
-            throw new IllegalArgumentException("Address cannot be null or empty");
         }
     }
 }

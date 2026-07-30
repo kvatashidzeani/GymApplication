@@ -186,6 +186,10 @@ public class GymFacade {
         return trainingService.selectTraining(id);
     }
 
+    public List<Training> selectTrainingsByTrainerId(Long trainerId) {
+        return trainingService.selectTrainingsByTrainerId(trainerId);
+    }
+
     public List<Training> selectAllTrainings() {
         return trainingService.selectAllTrainings();
     }

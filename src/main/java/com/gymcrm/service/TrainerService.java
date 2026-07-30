@@ -100,6 +100,7 @@ public class TrainerService {
     public Trainer createTrainer(String firstName, String lastName, TrainingType specialization) {
         log.info("Creating Trainer profile: {} {}", firstName, lastName);
         trainervalidator.validateTrainer(firstName, lastName, specialization);
+        ensureNotRegisteredAsOtherRole(firstName, lastName);
 
         String username = usernameGenerator.generateUsername(firstName, lastName);
         String password = passwordGenerator.generatePassword();
@@ -354,6 +355,31 @@ public class TrainerService {
         user.setPassword(newPassword);
         userDao.update(user);
         log.info("Password changed successfully for trainer: {}", username);
+    }
+
+    /**
+     * A person cannot be registered as both trainer and trainee (same first + last name).
+     */
+    private void ensureNotRegisteredAsOtherRole(String firstName, String lastName) {
+        for (Trainee trainee : traineeDao.findAll()) {
+            if (trainee.getUserId() == null) {
+                continue;
+            }
+            User user = userDao.findById(trainee.getUserId()).orElse(null);
+            if (user != null && namesEqual(user.getFirstName(), firstName)
+                    && namesEqual(user.getLastName(), lastName)) {
+                log.error("Cannot register trainer: already registered as trainee {} {}", firstName, lastName);
+                throw new IllegalArgumentException(
+                        "Cannot register as trainer: already registered as trainee with the same first and last name");
+            }
+        }
+    }
+
+    private static boolean namesEqual(String left, String right) {
+        if (left == null || right == null) {
+            return false;
+        }
+        return left.trim().equalsIgnoreCase(right.trim());
     }
 
     private void attachUser(Trainer trainer) {
