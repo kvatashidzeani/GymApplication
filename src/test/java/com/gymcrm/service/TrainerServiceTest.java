@@ -138,7 +138,16 @@ class TrainerServiceTest {
     }
 
     @Test
-    void selectTrainer_nullId_throws() {
-        assertThrows(IllegalArgumentException.class, () -> trainerService.selectTrainer(null));
+    void setTrainerActive_togglesSuccessfully() {
+        User user = new User("Giorgi", "Janelidze", "Giorgi.Janelidze", "pass", true, 10L);
+        Trainer trainer = new Trainer(1L, new TrainingType("Cardio", 1L), 10L);
+        when(trainerDao.findById(1L)).thenReturn(Optional.of(trainer));
+        when(userDao.findById(10L)).thenReturn(Optional.of(user));
+
+        Trainer result = trainerService.setTrainerActive(1L, false);
+
+        assertFalse(user.isActive());
+        assertSame(trainer, result);
+        verify(userDao).update(user);
     }
 }

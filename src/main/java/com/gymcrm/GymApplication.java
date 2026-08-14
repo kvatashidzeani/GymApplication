@@ -1,6 +1,6 @@
 package com.gymcrm;
 
-import com.gymcrm.config.AppConfig;
+import com.gymcrm.config.ConsoleConfig;
 import com.gymcrm.facade.GymFacade;
 import com.gymcrm.model.Trainee;
 import com.gymcrm.model.Trainer;
@@ -16,10 +16,14 @@ import org.springframework.context.annotation.AnnotationConfigApplicationContext
 import java.time.LocalDate;
 import java.util.List;
 
+/**
+ * Console demo entry point (in-memory facade flows, no web server).
+ * For the Spring Boot REST API + Swagger UI, run {@link GymRestApplication} instead.
+ */
 public class GymApplication {
     public static void main(String[] args) {
 
-        AnnotationConfigApplicationContext context = new AnnotationConfigApplicationContext(AppConfig.class);
+        AnnotationConfigApplicationContext context = new AnnotationConfigApplicationContext(ConsoleConfig.class);
         GymFacade facade = context.getBean(GymFacade.class);
         TrainingTypeStorage trainingTypeStorage = context.getBean(TrainingTypeStorage.class);
 

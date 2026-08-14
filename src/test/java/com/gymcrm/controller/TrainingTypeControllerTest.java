@@ -1,6 +1,7 @@
 package com.gymcrm.controller;
 
 import com.gymcrm.dto.TrainingTypeDto;
+import com.gymcrm.exceptions.UnauthorizedException;
 import com.gymcrm.facade.GymFacade;
 import com.gymcrm.model.TrainingType;
 import com.gymcrm.storage.TrainingTypeStorage;
@@ -12,6 +13,7 @@ import org.springframework.http.ResponseEntity;
 import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.Mockito.*;
 
 class TrainingTypeControllerTest {
@@ -45,14 +47,12 @@ class TrainingTypeControllerTest {
     }
 
     @Test
-    void getTrainingTypes_unauthorized_returns401() {
+    void getTrainingTypes_unauthorized_throwsUnauthorized() {
         when(gymFacade.matchTraineeCredentials("John.Doe", "wrong")).thenReturn(false);
         when(gymFacade.matchTrainerCredentials("John.Doe", "wrong")).thenReturn(false);
 
-        ResponseEntity<List<TrainingTypeDto>> response =
-                controller.getTrainingTypes("John.Doe", "wrong");
-
-        assertEquals(HttpStatus.UNAUTHORIZED, response.getStatusCode());
+        assertThrows(UnauthorizedException.class,
+                () -> controller.getTrainingTypes("John.Doe", "wrong"));
         verify(trainingTypeStorage, never()).findAll();
     }
 }

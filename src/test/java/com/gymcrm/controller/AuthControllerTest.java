@@ -1,6 +1,8 @@
 package com.gymcrm.controller;
 
+import com.gymcrm.actuator.metrics.GymMetrics;
 import com.gymcrm.dto.ChangeLoginRequest;
+import com.gymcrm.exceptions.UnauthorizedException;
 import com.gymcrm.facade.GymFacade;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -13,12 +15,15 @@ import static org.mockito.Mockito.*;
 class AuthControllerTest {
 
     private GymFacade gymFacade;
+    private GymMetrics gymMetrics;
     private AuthController controller;
 
     @BeforeEach
     void setUp() {
         gymFacade = mock(GymFacade.class);
-        controller = new AuthController(gymFacade);
+        gymMetrics = mock(GymMetrics.class);
+        when(gymMetrics.startLoginTimer()).thenReturn(io.micrometer.core.instrument.Timer.start());
+        controller = new AuthController(gymFacade, gymMetrics);
     }
 
     @Test
@@ -28,6 +33,8 @@ class AuthControllerTest {
         ResponseEntity<Void> response = controller.login("Ani.Smith", "pass");
 
         assertEquals(HttpStatus.OK, response.getStatusCode());
+        verify(gymMetrics).loginSucceeded();
+        verify(gymMetrics).stopLoginTimer(any());
     }
 
     @Test
@@ -38,16 +45,19 @@ class AuthControllerTest {
         ResponseEntity<Void> response = controller.login("Mike.Brown", "pass");
 
         assertEquals(HttpStatus.OK, response.getStatusCode());
+        verify(gymMetrics).loginSucceeded();
     }
 
     @Test
-    void login_invalidCredentials_returns401() {
+    void login_invalidCredentials_throwsUnauthorized() {
         when(gymFacade.matchTraineeCredentials("Ani.Smith", "wrong")).thenReturn(false);
         when(gymFacade.matchTrainerCredentials("Ani.Smith", "wrong")).thenReturn(false);
 
-        ResponseEntity<Void> response = controller.login("Ani.Smith", "wrong");
-
-        assertEquals(HttpStatus.UNAUTHORIZED, response.getStatusCode());
+        UnauthorizedException ex = assertThrows(UnauthorizedException.class,
+                () -> controller.login("Ani.Smith", "wrong"));
+        assertEquals("Invalid credentials", ex.getMessage());
+        verify(gymMetrics).loginFailed();
+        verify(gymMetrics).stopLoginTimer(any());
     }
 
     @Test
@@ -71,7 +81,7 @@ class AuthControllerTest {
     }
 
     @Test
-    void changeLogin_wrongOldPassword_returns401() {
+    void changeLogin_wrongOldPassword_throwsUnauthorized() {
         ChangeLoginRequest request = new ChangeLoginRequest();
         request.setUsername("Ani.Smith");
         request.setOldPassword("wrong");
@@ -80,9 +90,7 @@ class AuthControllerTest {
         when(gymFacade.matchTraineeCredentials("Ani.Smith", "wrong")).thenReturn(false);
         when(gymFacade.matchTrainerCredentials("Ani.Smith", "wrong")).thenReturn(false);
 
-        ResponseEntity<Void> response = controller.changeLogin(request);
-
-        assertEquals(HttpStatus.UNAUTHORIZED, response.getStatusCode());
+        assertThrows(UnauthorizedException.class, () -> controller.changeLogin(request));
         verify(gymFacade, never()).changeTraineePassword(any(), any(), any());
     }
 }

@@ -1,5 +1,6 @@
 package com.gymcrm.controller;
 
+import com.gymcrm.actuator.metrics.GymMetrics;
 import com.gymcrm.dto.ActivateRequest;
 import com.gymcrm.dto.RegistrationResponse;
 import com.gymcrm.dto.TraineeProfileResponse;
@@ -8,6 +9,7 @@ import com.gymcrm.dto.TrainerShortDto;
 import com.gymcrm.dto.TrainingListItemDto;
 import com.gymcrm.dto.UpdateTraineeProfileRequest;
 import com.gymcrm.dto.UpdateTraineeTrainersRequest;
+import com.gymcrm.exceptions.UnauthorizedException;
 import com.gymcrm.facade.GymFacade;
 import com.gymcrm.model.Trainee;
 import com.gymcrm.model.Trainer;
@@ -29,12 +31,14 @@ import static org.mockito.Mockito.*;
 class TraineeControllerTest {
 
     private GymFacade gymFacade;
+    private GymMetrics gymMetrics;
     private TraineeController controller;
 
     @BeforeEach
     void setUp() {
         gymFacade = mock(GymFacade.class);
-        controller = new TraineeController(gymFacade);
+        gymMetrics = mock(GymMetrics.class);
+        controller = new TraineeController(gymFacade, gymMetrics);
     }
 
     @Test
@@ -60,6 +64,7 @@ class TraineeControllerTest {
         assertEquals("abc12345", response.getBody().getPassword());
         verify(gymFacade).createTrainee("Ani", "Kvatashidze",
                 LocalDate.of(2005, 6, 9), "Gora");
+        verify(gymMetrics).traineeRegistered();
     }
 
     @Test
@@ -102,12 +107,11 @@ class TraineeControllerTest {
     }
 
     @Test
-    void getProfile_unauthorized_returns401() {
+    void getProfile_unauthorized_throwsUnauthorized() {
         when(gymFacade.matchTraineeCredentials("Ani.Smith", "wrong")).thenReturn(false);
 
-        ResponseEntity<TraineeProfileResponse> response = controller.getProfile("Ani.Smith", "wrong");
-
-        assertEquals(HttpStatus.UNAUTHORIZED, response.getStatusCode());
+        assertThrows(UnauthorizedException.class,
+                () -> controller.getProfile("Ani.Smith", "wrong"));
         verify(gymFacade, never()).selectTraineeByUsername(any());
     }
 
@@ -149,12 +153,11 @@ class TraineeControllerTest {
     }
 
     @Test
-    void deleteProfile_unauthorized_returns401() {
+    void deleteProfile_unauthorized_throwsUnauthorized() {
         when(gymFacade.matchTraineeCredentials("Ani.Smith", "wrong")).thenReturn(false);
 
-        ResponseEntity<Void> response = controller.deleteProfile("Ani.Smith", "wrong");
-
-        assertEquals(HttpStatus.UNAUTHORIZED, response.getStatusCode());
+        assertThrows(UnauthorizedException.class,
+                () -> controller.deleteProfile("Ani.Smith", "wrong"));
         verify(gymFacade, never()).deleteTraineeByUsername(any());
     }
 
@@ -180,13 +183,11 @@ class TraineeControllerTest {
     }
 
     @Test
-    void getNotAssignedActiveTrainers_unauthorized_returns401() {
+    void getNotAssignedActiveTrainers_unauthorized_throwsUnauthorized() {
         when(gymFacade.matchTraineeCredentials("Ani.Smith", "wrong")).thenReturn(false);
 
-        ResponseEntity<List<TrainerShortDto>> response =
-                controller.getNotAssignedActiveTrainers("Ani.Smith", "wrong");
-
-        assertEquals(HttpStatus.UNAUTHORIZED, response.getStatusCode());
+        assertThrows(UnauthorizedException.class,
+                () -> controller.getNotAssignedActiveTrainers("Ani.Smith", "wrong"));
         verify(gymFacade, never()).getTrainersNotAssignedToTrainee(any());
     }
 

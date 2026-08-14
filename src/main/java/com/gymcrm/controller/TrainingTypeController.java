@@ -1,6 +1,8 @@
 package com.gymcrm.controller;
 
+import com.gymcrm.dto.ErrorResponse;
 import com.gymcrm.dto.TrainingTypeDto;
+import com.gymcrm.exceptions.UnauthorizedException;
 import com.gymcrm.facade.GymFacade;
 import com.gymcrm.model.TrainingType;
 import com.gymcrm.storage.TrainingTypeStorage;
@@ -12,7 +14,6 @@ import io.swagger.annotations.ApiResponse;
 import io.swagger.annotations.ApiResponses;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -22,7 +23,7 @@ import org.springframework.web.bind.annotation.RestController;
 import java.util.ArrayList;
 import java.util.List;
 
-@Api(tags = "Training Type")
+@Api(value = "Training Type API", tags = "Training Type", description = "Training type catalog operations")
 @RestController
 @RequestMapping("/training-types")
 public class TrainingTypeController {
@@ -42,11 +43,14 @@ public class TrainingTypeController {
      */
     @ApiOperation(
             value = "Get Training types",
-            notes = "Returns all available training types. Requires username and password authentication."
+            notes = "Returns all available training types. Requires username and password authentication.",
+            response = TrainingTypeDto.class,
+            responseContainer = "List"
     )
     @ApiResponses({
-            @ApiResponse(code = 200, message = "Training types list"),
-            @ApiResponse(code = 401, message = "Unauthorized")
+            @ApiResponse(code = 200, message = "Training types list", response = TrainingTypeDto.class, responseContainer = "List"),
+            @ApiResponse(code = 400, message = "Invalid request", response = ErrorResponse.class),
+            @ApiResponse(code = 401, message = "Unauthorized", response = ErrorResponse.class)
     })
     @GetMapping
     public ResponseEntity<List<TrainingTypeDto>> getTrainingTypes(
@@ -62,7 +66,7 @@ public class TrainingTypeController {
                 || gymFacade.matchTrainerCredentials(user, pass);
         if (!authorized) {
             log.warn("Unauthorized get training types for username={}", user);
-            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+            throw new UnauthorizedException("Unauthorized");
         }
 
         List<TrainingTypeDto> result = new ArrayList<>();

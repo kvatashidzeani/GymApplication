@@ -1,12 +1,15 @@
 package com.gymcrm.controller;
 
+import com.gymcrm.actuator.metrics.GymMetrics;
 import com.gymcrm.dto.ActivateRequest;
+import com.gymcrm.dto.ErrorResponse;
 import com.gymcrm.dto.RegistrationResponse;
 import com.gymcrm.dto.TraineeShortDto;
 import com.gymcrm.dto.TrainerProfileResponse;
 import com.gymcrm.dto.TrainerRegistrationRequest;
 import com.gymcrm.dto.TrainerTrainingListItemDto;
 import com.gymcrm.dto.UpdateTrainerProfileRequest;
+import com.gymcrm.exceptions.UnauthorizedException;
 import com.gymcrm.facade.GymFacade;
 import com.gymcrm.model.Trainee;
 import com.gymcrm.model.Trainer;
@@ -41,7 +44,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
-@Api(tags = "Trainer")
+@Api(value = "Trainer API", tags = "Trainer", description = "Trainer registration and profile operations")
 @RestController
 @RequestMapping("/trainers")
 public class TrainerController {
@@ -50,10 +53,12 @@ public class TrainerController {
 
     private final GymFacade gymFacade;
     private final TrainingTypeStorage trainingTypeStorage;
+    private final GymMetrics gymMetrics;
 
-    public TrainerController(GymFacade gymFacade, TrainingTypeStorage trainingTypeStorage) {
+    public TrainerController(GymFacade gymFacade, TrainingTypeStorage trainingTypeStorage, GymMetrics gymMetrics) {
         this.gymFacade = gymFacade;
         this.trainingTypeStorage = trainingTypeStorage;
+        this.gymMetrics = gymMetrics;
     }
 
     /**
@@ -61,14 +66,17 @@ public class TrainerController {
      */
     @ApiOperation(
             value = "Trainer Registration",
-            notes = "Creates a trainer profile. Specialization must be an existing training type name."
+            notes = "Creates a trainer profile. Specialization must be an existing training type name.",
+            response = RegistrationResponse.class
     )
     @ApiResponses({
-            @ApiResponse(code = 200, message = "Registration successful"),
-            @ApiResponse(code = 400, message = "Invalid request or unknown training type")
+            @ApiResponse(code = 200, message = "Registration successful", response = RegistrationResponse.class),
+            @ApiResponse(code = 400, message = "Invalid request or unknown training type", response = ErrorResponse.class)
     })
     @PostMapping("/register")
-    public ResponseEntity<RegistrationResponse> register(@RequestBody TrainerRegistrationRequest request) {
+    public ResponseEntity<RegistrationResponse> register(
+            @ApiParam(value = "Trainer registration request", required = true)
+            @RequestBody TrainerRegistrationRequest request) {
         RequestValidation.requireNonNull(request, "Request body");
         RequestValidation.requireNonBlank(request.getFirstName(), "First name");
         RequestValidation.requireNonBlank(request.getLastName(), "Last name");
@@ -88,6 +96,7 @@ public class TrainerController {
                 trainer.getUser().getUsername(),
                 trainer.getUser().getPassword());
 
+        gymMetrics.trainerRegistered();
         log.info("Trainer registered successfully, username={}", response.getUsername());
         return ResponseEntity.status(HttpStatus.OK).body(response);
     }
@@ -97,12 +106,14 @@ public class TrainerController {
      */
     @ApiOperation(
             value = "Get Trainer Profile",
-            notes = "Returns trainer profile and assigned trainees. Requires authentication."
+            notes = "Returns trainer profile and assigned trainees. Requires authentication.",
+            response = TrainerProfileResponse.class
     )
     @ApiResponses({
-            @ApiResponse(code = 200, message = "Profile found"),
-            @ApiResponse(code = 401, message = "Unauthorized"),
-            @ApiResponse(code = 404, message = "Trainer not found")
+            @ApiResponse(code = 200, message = "Profile found", response = TrainerProfileResponse.class),
+            @ApiResponse(code = 400, message = "Invalid request", response = ErrorResponse.class),
+            @ApiResponse(code = 401, message = "Unauthorized", response = ErrorResponse.class),
+            @ApiResponse(code = 404, message = "Trainer not found", response = ErrorResponse.class)
     })
     @GetMapping("/{username}")
     public ResponseEntity<TrainerProfileResponse> getProfile(
@@ -115,7 +126,7 @@ public class TrainerController {
         String pass = RequestValidation.requirePassword(password);
         if (!gymFacade.matchTrainerCredentials(user, pass)) {
             log.warn("Unauthorized get trainer profile for username={}", user);
-            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+            throw new UnauthorizedException("Unauthorized");
         }
 
         Trainer trainer = gymFacade.selectTrainerByUsername(user);
@@ -128,18 +139,20 @@ public class TrainerController {
      */
     @ApiOperation(
             value = "Update Trainer Profile",
-            notes = "Updates trainer profile. Username and specialization cannot be changed. Requires authentication."
+            notes = "Updates trainer profile. Username and specialization cannot be changed. Requires authentication.",
+            response = TrainerProfileResponse.class
     )
     @ApiResponses({
-            @ApiResponse(code = 200, message = "Profile updated"),
-            @ApiResponse(code = 400, message = "Invalid request"),
-            @ApiResponse(code = 401, message = "Unauthorized"),
-            @ApiResponse(code = 404, message = "Trainer not found")
+            @ApiResponse(code = 200, message = "Profile updated", response = TrainerProfileResponse.class),
+            @ApiResponse(code = 400, message = "Invalid request", response = ErrorResponse.class),
+            @ApiResponse(code = 401, message = "Unauthorized", response = ErrorResponse.class),
+            @ApiResponse(code = 404, message = "Trainer not found", response = ErrorResponse.class)
     })
     @PutMapping("/{username}")
     public ResponseEntity<TrainerProfileResponse> updateProfile(
             @ApiParam(value = "Trainer username", required = true) @PathVariable("username") String username,
             @ApiParam(value = "Password (authentication)", required = true) @RequestParam("password") String password,
+            @ApiParam(value = "Updated trainer profile fields", required = true)
             @RequestBody UpdateTrainerProfileRequest request) {
 
         log.info("PUT /trainers/{}", username);
@@ -149,7 +162,7 @@ public class TrainerController {
         String pass = RequestValidation.requirePassword(password);
         if (!gymFacade.matchTrainerCredentials(user, pass)) {
             log.warn("Unauthorized update trainer profile for username={}", user);
-            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+            throw new UnauthorizedException("Unauthorized");
         }
         RequestValidation.requireSameUsername(user, request.getUsername());
         RequestValidation.requireNonBlank(request.getFirstName(), "First name");
@@ -175,18 +188,20 @@ public class TrainerController {
      */
     @ApiOperation(
             value = "Activate / De-Activate Trainer",
-            notes = "Sets trainer active status. Fails if already in the requested state. Requires authentication."
+            notes = "Sets trainer active status. Fails if already in the requested state. Requires authentication.",
+            response = Void.class
     )
     @ApiResponses({
             @ApiResponse(code = 200, message = "Status updated"),
-            @ApiResponse(code = 400, message = "Invalid request or already in that state"),
-            @ApiResponse(code = 401, message = "Unauthorized"),
-            @ApiResponse(code = 404, message = "Trainer not found")
+            @ApiResponse(code = 400, message = "Invalid request or already in that state", response = ErrorResponse.class),
+            @ApiResponse(code = 401, message = "Unauthorized", response = ErrorResponse.class),
+            @ApiResponse(code = 404, message = "Trainer not found", response = ErrorResponse.class)
     })
     @PatchMapping("/{username}")
     public ResponseEntity<Void> setActive(
             @ApiParam(value = "Trainer username", required = true) @PathVariable("username") String username,
             @ApiParam(value = "Password (authentication)", required = true) @RequestParam("password") String password,
+            @ApiParam(value = "Activate/deactivate request with username and isActive flag", required = true)
             @RequestBody ActivateRequest request) {
 
         log.info("PATCH /trainers/{} isActive={}", username, request != null ? request.getIsActive() : null);
@@ -196,7 +211,7 @@ public class TrainerController {
         String pass = RequestValidation.requirePassword(password);
         if (!gymFacade.matchTrainerCredentials(user, pass)) {
             log.warn("Unauthorized activate/deactivate for trainer username={}", user);
-            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+            throw new UnauthorizedException("Unauthorized");
         }
         RequestValidation.requireSameUsername(user, request.getUsername());
         RequestValidation.requireNonNull(request.getIsActive(), "Is Active");
@@ -212,12 +227,15 @@ public class TrainerController {
      */
     @ApiOperation(
             value = "Get Trainer Trainings List",
-            notes = "Returns trainer trainings. Optional filters: periodFrom, periodTo, traineeName. Requires authentication."
+            notes = "Returns trainer trainings. Optional filters: periodFrom, periodTo, traineeName. Requires authentication.",
+            response = TrainerTrainingListItemDto.class,
+            responseContainer = "List"
     )
     @ApiResponses({
-            @ApiResponse(code = 200, message = "Trainings list returned"),
-            @ApiResponse(code = 401, message = "Unauthorized"),
-            @ApiResponse(code = 404, message = "Trainer not found")
+            @ApiResponse(code = 200, message = "Trainings list returned", response = TrainerTrainingListItemDto.class, responseContainer = "List"),
+            @ApiResponse(code = 400, message = "Invalid request", response = ErrorResponse.class),
+            @ApiResponse(code = 401, message = "Unauthorized", response = ErrorResponse.class),
+            @ApiResponse(code = 404, message = "Trainer not found", response = ErrorResponse.class)
     })
     @GetMapping("/{username}/trainings")
     public ResponseEntity<List<TrainerTrainingListItemDto>> getTrainings(
@@ -236,7 +254,7 @@ public class TrainerController {
         String pass = RequestValidation.requirePassword(password);
         if (!gymFacade.matchTrainerCredentials(user, pass)) {
             log.warn("Unauthorized get trainings for trainer username={}", user);
-            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+            throw new UnauthorizedException("Unauthorized");
         }
         RequestValidation.requirePeriodOrder(periodFrom, periodTo);
 
@@ -277,14 +295,27 @@ public class TrainerController {
                 ? trainer.getSpecialization().getTrainingTypeName()
                 : null);
         response.setIsActive(user.isActive());
-        response.setTraineesList(findAssignedTrainees(trainer.getId()));
+        response.setTraineesList(findAssignedTrainees(trainer));
         return response;
     }
 
-    private List<TraineeShortDto> findAssignedTrainees(Long trainerId) {
+    private List<TraineeShortDto> findAssignedTrainees(Trainer trainer) {
+        Long trainerId = trainer.getId();
         Map<String, TraineeShortDto> byUsername = new LinkedHashMap<>();
 
-        // Trainees explicitly assigned to this trainer (M2M)
+        Trainer withLinks = gymFacade.selectTrainer(trainerId);
+        if (withLinks == null) {
+            withLinks = trainer;
+        }
+
+        // Inverse side of many-to-many (Trainer.traineeIds)
+        if (withLinks.getTraineeIds() != null) {
+            for (Long traineeId : withLinks.getTraineeIds()) {
+                putTraineeShort(byUsername, gymFacade.selectTrainee(traineeId));
+            }
+        }
+
+        // Owning side scan (Trainee.trainerIds) — keeps lists consistent if only one side was set
         for (Trainee trainee : gymFacade.selectAllTrainees()) {
             if (trainee.getTrainerIds() != null && trainee.getTrainerIds().contains(trainerId)) {
                 putTraineeShort(byUsername, trainee);

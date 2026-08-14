@@ -1,56 +1,50 @@
 package com.gymcrm;
 
-import com.gymcrm.config.AppConfig;
-import com.gymcrm.config.WebConfig;
-import org.apache.catalina.Context;
-import org.apache.catalina.LifecycleState;
-import org.apache.catalina.connector.Connector;
-import org.apache.catalina.startup.Tomcat;
-import org.springframework.web.context.support.AnnotationConfigWebApplicationContext;
-import org.springframework.web.servlet.DispatcherServlet;
-
-import java.nio.file.Files;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.boot.SpringApplication;
+import org.springframework.boot.autoconfigure.SpringBootApplication;
+import org.springframework.boot.context.event.ApplicationReadyEvent;
+import org.springframework.context.event.EventListener;
+import org.springframework.core.env.Environment;
 
 /**
- * Starts the Gym CRM REST API on embedded Tomcat (default port 8080).
- * Pass a port as the first program argument to override, e.g. 8081.
+ * Spring Boot entry point for the Gym CRM REST API.
+ * <p>
+ * Run this class (or {@code mvn spring-boot:run}).
+ * Swagger UI: {@code http://localhost:8081/swagger-ui.html}
  */
+@SpringBootApplication
 public class GymRestApplication {
 
-    public static void main(String[] args) throws Exception {
-        // Default 8081 — 8080 is often already taken on local machines
-        int port = 8081;
-        if (args.length > 0) {
-            port = Integer.parseInt(args[0]);
+    private static final Logger log = LoggerFactory.getLogger(GymRestApplication.class);
+
+    private final Environment environment;
+
+    public GymRestApplication(Environment environment) {
+        this.environment = environment;
+    }
+
+    public static void main(String[] args) {
+        SpringApplication.run(GymRestApplication.class, args);
+    }
+
+    @EventListener(ApplicationReadyEvent.class)
+    public void logStartupLinks() {
+        String port = environment.getProperty("local.server.port",
+                environment.getProperty("server.port", "8081"));
+        String base = "http://localhost:" + port;
+        String profiles = String.join(", ", environment.getActiveProfiles());
+        if (profiles.isBlank()) {
+            profiles = String.join(", ", environment.getDefaultProfiles());
         }
-
-        AnnotationConfigWebApplicationContext appContext = new AnnotationConfigWebApplicationContext();
-        appContext.register(AppConfig.class, WebConfig.class);
-
-        Tomcat tomcat = new Tomcat();
-        tomcat.setPort(port);
-        Connector connector = tomcat.getConnector();
-
-        String docBase = Files.createTempDirectory("gym-crm-tomcat").toFile().getAbsolutePath();
-        Context context = tomcat.addContext("", docBase);
-
-        DispatcherServlet dispatcherServlet = new DispatcherServlet(appContext);
-        Tomcat.addServlet(context, "dispatcher", dispatcherServlet).setLoadOnStartup(1);
-        context.addServletMappingDecoded("/", "dispatcher");
-
-        tomcat.start();
-
-        if (connector.getState() != LifecycleState.STARTED) {
-            System.err.println("Failed to bind port " + port
-                    + ". Something else is already using it.");
-            System.err.println("Fix: stop the other process, or run with another port:");
-            System.err.println("  Program arguments in IntelliJ: 8081");
-            tomcat.stop();
-            System.exit(1);
-        }
-
-        System.out.println("Gym CRM REST API started on http://localhost:" + port);
-        System.out.println("Swagger UI: http://localhost:" + port + "/swagger-ui.html");
-        tomcat.getServer().await();
+        log.info("Gym CRM REST API started (profiles: {})", profiles);
+        log.info("API base:    {}", base);
+        log.info("Swagger UI:  {}/swagger-ui.html", base);
+        log.info("OpenAPI:     {}/v3/api-docs", base);
+        log.info("Health:      {}/actuator/health", base);
+        log.info("Prometheus:  {}/actuator/prometheus", base);
+        log.info("Metrics:     {}/actuator/metrics", base);
+        log.info("Info:        {}/actuator/info", base);
     }
 }

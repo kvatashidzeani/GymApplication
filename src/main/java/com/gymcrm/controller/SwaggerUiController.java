@@ -19,13 +19,13 @@ public class SwaggerUiController {
             <head>
               <meta charset="UTF-8">
               <title>Gym CRM API - Swagger UI</title>
-              <link rel="stylesheet" type="text/css" href="/webjars/swagger-ui/swagger-ui.css">
+              <link rel="stylesheet" type="text/css" href="/webjars/swagger-ui/5.17.14/swagger-ui.css">
               <style>html { box-sizing: border-box; overflow-y: scroll; } body { margin: 0; background: #fafafa; }</style>
             </head>
             <body>
               <div id="swagger-ui"></div>
-              <script src="/webjars/swagger-ui/swagger-ui-bundle.js"></script>
-              <script src="/webjars/swagger-ui/swagger-ui-standalone-preset.js"></script>
+              <script src="/webjars/swagger-ui/5.17.14/swagger-ui-bundle.js"></script>
+              <script src="/webjars/swagger-ui/5.17.14/swagger-ui-standalone-preset.js"></script>
               <script>
                 window.onload = function () {
                   if (typeof SwaggerUIBundle === 'undefined') {

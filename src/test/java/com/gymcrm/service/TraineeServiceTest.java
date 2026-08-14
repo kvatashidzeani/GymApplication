@@ -11,6 +11,7 @@ import com.gymcrm.exceptions.TraineeNotFoundException;
 import com.gymcrm.model.Trainee;
 import com.gymcrm.model.Trainer;
 import com.gymcrm.model.Training;
+import com.gymcrm.model.TrainingType;
 import com.gymcrm.model.User;
 import com.gymcrm.validators.TraineeValidator;
 import org.junit.jupiter.api.BeforeEach;
@@ -19,6 +20,7 @@ import org.junit.jupiter.api.Test;
 import java.time.LocalDate;
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
@@ -197,5 +199,81 @@ class TraineeServiceTest {
     @Test
     void select_nullId_throwsIllegalArgument() {
         assertThrows(IllegalArgumentException.class, () -> traineeService.select(null));
+    }
+
+    @Test
+    void updateTraineeTrainersList_syncsBothSides() {
+        User traineeUser = new User("Ani", "Smith", "Ani.Smith", "pass", true, 10L);
+        Trainee trainee = new Trainee(1L, LocalDate.of(2000, 1, 1), "Tbilisi", 10L);
+        trainee.setTrainerIds(Set.of(5L));
+
+        User oldTrainerUser = new User("Old", "Trainer", "Old.Trainer", "x", true, 50L);
+        Trainer oldTrainer = new Trainer(5L, null, 50L);
+        oldTrainer.getTraineeIds().add(1L);
+
+        User newTrainerUser = new User("Mike", "Brown", "Mike.Brown", "x", true, 20L);
+        Trainer newTrainer = new Trainer(2L, null, 20L);
+
+        when(userDao.findAll()).thenReturn(List.of(traineeUser, oldTrainerUser, newTrainerUser));
+        when(traineeDao.findAll()).thenReturn(List.of(trainee));
+        when(traineeDao.findById(1L)).thenReturn(Optional.of(trainee));
+        when(trainerDao.findById(5L)).thenReturn(Optional.of(oldTrainer));
+        when(trainerDao.findById(2L)).thenReturn(Optional.of(newTrainer));
+        when(trainerDao.findAll()).thenReturn(List.of(oldTrainer, newTrainer));
+        when(traineeDao.update(any(Trainee.class))).thenAnswer(inv -> inv.getArgument(0));
+        when(trainerDao.update(any(Trainer.class))).thenAnswer(inv -> inv.getArgument(0));
+
+        traineeService.updateTraineeTrainersList("Ani.Smith", List.of("Mike.Brown"));
+
+        assertEquals(Set.of(2L), trainee.getTrainerIds());
+        assertFalse(oldTrainer.getTraineeIds().contains(1L));
+        assertTrue(newTrainer.getTraineeIds().contains(1L));
+        verify(traineeDao).update(trainee);
+    }
+
+    @Test
+    void getTrainersNotAssignedToTrainee_filtersAssignedAndInactive() {
+        User traineeUser = new User("Ani", "Smith", "Ani.Smith", "pass", true, 10L);
+        Trainee trainee = new Trainee(1L, LocalDate.of(2000, 1, 1), "Tbilisi", 10L);
+        trainee.setTrainerIds(Set.of(2L));
+
+        TrainingType cardio = new TrainingType("Cardio", 1L);
+        User assignedUser = new User("Mike", "Brown", "Mike.Brown", "x", true, 20L);
+        Trainer assigned = new Trainer(2L, cardio, 20L);
+        assigned.setUser(assignedUser);
+
+        User freeUser = new User("Sara", "Lee", "Sara.Lee", "x", true, 30L);
+        Trainer free = new Trainer(3L, cardio, 30L);
+        free.setUser(freeUser);
+
+        User inactiveUser = new User("Tom", "Idle", "Tom.Idle", "x", false, 40L);
+        Trainer inactive = new Trainer(4L, cardio, 40L);
+        inactive.setUser(inactiveUser);
+
+        when(userDao.findAll()).thenReturn(List.of(traineeUser));
+        when(traineeDao.findAll()).thenReturn(List.of(trainee));
+        when(trainerDao.findAll()).thenReturn(List.of(assigned, free, inactive));
+        when(userDao.findById(20L)).thenReturn(Optional.of(assignedUser));
+        when(userDao.findById(30L)).thenReturn(Optional.of(freeUser));
+        when(userDao.findById(40L)).thenReturn(Optional.of(inactiveUser));
+
+        List<Trainer> result = traineeService.getTrainersNotAssignedToTrainee("Ani.Smith");
+
+        assertEquals(1, result.size());
+        assertEquals(3L, result.get(0).getId());
+    }
+
+    @Test
+    void setTraineeActive_togglesFromInactiveToActive() {
+        User user = new User("Ani", "Smith", "Ani.Smith", "pass", false, 10L);
+        Trainee trainee = new Trainee(1L, LocalDate.of(2000, 1, 1), "Tbilisi", 10L);
+        when(traineeDao.findById(1L)).thenReturn(Optional.of(trainee));
+        when(userDao.findById(10L)).thenReturn(Optional.of(user));
+
+        Trainee result = traineeService.setTraineeActive(1L, true);
+
+        assertTrue(user.isActive());
+        assertSame(trainee, result);
+        verify(userDao).update(user);
     }
 }

@@ -1,5 +1,6 @@
 package com.gymcrm.controller;
 
+import com.gymcrm.actuator.metrics.GymMetrics;
 import com.gymcrm.dto.ActivateRequest;
 import com.gymcrm.dto.RegistrationResponse;
 import com.gymcrm.dto.TrainerProfileResponse;
@@ -29,13 +30,15 @@ class TrainerControllerTest {
 
     private GymFacade gymFacade;
     private TrainingTypeStorage trainingTypeStorage;
+    private GymMetrics gymMetrics;
     private TrainerController controller;
 
     @BeforeEach
     void setUp() {
         gymFacade = mock(GymFacade.class);
         trainingTypeStorage = mock(TrainingTypeStorage.class);
-        controller = new TrainerController(gymFacade, trainingTypeStorage);
+        gymMetrics = mock(GymMetrics.class);
+        controller = new TrainerController(gymFacade, trainingTypeStorage, gymMetrics);
     }
 
     @Test
@@ -59,6 +62,7 @@ class TrainerControllerTest {
         assertEquals(HttpStatus.OK, response.getStatusCode());
         assertEquals("Giorgi.Janelidze", response.getBody().getUsername());
         assertEquals("secret12", response.getBody().getPassword());
+        verify(gymMetrics).trainerRegistered();
     }
 
     @Test

@@ -153,6 +153,7 @@ public class TraineeService {
         User user = userDao.findById(trainee.getUserId())
                 .orElseThrow(() -> new IllegalStateException("User not found for trainee id: " + id));
 
+        // Username is immutable — never updated here.
         user.setFirstName(firstName);
         user.setLastName(lastName);
         if (isActive != null) {
@@ -171,6 +172,7 @@ public class TraineeService {
 
     /**
      * Activate or de-activate Trainee (updates User.isActive via userId FK).
+     * Non-idempotent: fails if the profile is already in the requested state.
      */
     public Trainee setTraineeActive(Long id, boolean isActive) {
         log.info("Setting trainee id={} active={}", id, isActive);
@@ -233,6 +235,8 @@ public class TraineeService {
                 });
 
         Long userId = trainee.getUserId();
+        unlinkTraineeFromAllTrainers(trainee);
+
         List<Training> trainings = trainingDao.findByTraineeId(id);
         trainings.forEach(training -> trainingDao.delete(training.getId()));
         log.info("Cascade-deleted {} training(s) for trainee id={}", trainings.size(), id);
@@ -294,6 +298,7 @@ public class TraineeService {
 
     /**
      * Update trainee's assigned trainers list (many-to-many) by trainer usernames.
+     * Keeps both sides in sync: Trainee.trainerIds and Trainer.traineeIds.
      */
     public void updateTraineeTrainersList(String traineeUsername, List<String> trainerUsernames) {
         log.info("Updating trainers list for trainee: {}", traineeUsername);
@@ -306,6 +311,7 @@ public class TraineeService {
         }
 
         Trainee trainee = selectTraineeByUsername(traineeUsername);
+        Set<Long> previousTrainerIds = new HashSet<>(trainee.getTrainerIds());
         Set<Long> trainerIds = new HashSet<>();
         for (String trainerUsername : trainerUsernames) {
             if (trainerUsername == null || trainerUsername.trim().isEmpty()) {
@@ -314,9 +320,47 @@ public class TraineeService {
             trainerIds.add(resolveTrainerIdByUsername(trainerUsername.trim()));
         }
 
-        trainee.setTrainerIds(trainerIds);
-        traineeDao.update(trainee);
+        syncTraineeTrainerAssignments(trainee, previousTrainerIds, trainerIds);
         log.info("Updated trainers list for trainee {}: {} trainer(s)", traineeUsername, trainerIds.size());
+    }
+
+    private void syncTraineeTrainerAssignments(Trainee trainee,
+                                               Set<Long> previousTrainerIds,
+                                               Set<Long> newTrainerIds) {
+        Long traineeId = trainee.getId();
+
+        for (Long oldTrainerId : previousTrainerIds) {
+            if (!newTrainerIds.contains(oldTrainerId)) {
+                trainerDao.findById(oldTrainerId).ifPresent(trainer -> {
+                    trainer.getTraineeIds().remove(traineeId);
+                    trainerDao.update(trainer);
+                });
+            }
+        }
+
+        for (Long newTrainerId : newTrainerIds) {
+            trainerDao.findById(newTrainerId).ifPresent(trainer -> {
+                trainer.getTraineeIds().add(traineeId);
+                trainerDao.update(trainer);
+            });
+        }
+
+        trainee.setTrainerIds(newTrainerIds);
+        traineeDao.update(trainee);
+    }
+
+    private void unlinkTraineeFromAllTrainers(Trainee trainee) {
+        if (trainee.getTrainerIds() == null || trainee.getTrainerIds().isEmpty()) {
+            return;
+        }
+        Long traineeId = trainee.getId();
+        for (Long trainerId : new HashSet<>(trainee.getTrainerIds())) {
+            trainerDao.findById(trainerId).ifPresent(trainer -> {
+                trainer.getTraineeIds().remove(traineeId);
+                trainerDao.update(trainer);
+            });
+        }
+        trainee.setTrainerIds(new HashSet<>());
     }
 
     private Long resolveTrainerIdByUsername(String username) {

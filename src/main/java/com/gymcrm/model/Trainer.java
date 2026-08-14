@@ -7,12 +7,16 @@ import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.OneToOne;
 import jakarta.persistence.Table;
+import jakarta.persistence.Transient;
 import org.hibernate.annotations.JdbcTypeCode;
 
 import java.sql.Types;
+import java.util.HashSet;
+import java.util.Set;
 
 /**
  * Child of User (one-to-one): trainer.user_id FK → user.id (unique).
+ * Many-to-many with Trainee via traineeIds (in-memory inverse side).
  * Also references TrainingType via specialization.
  */
 @Entity
@@ -34,6 +38,10 @@ public class Trainer {
     @OneToOne(optional = false, fetch = FetchType.EAGER)
     @JoinColumn(name = "user_id", referencedColumnName = "id", nullable = false, unique = true)
     private User user;
+
+    /** Assigned trainee ids (many-to-many inverse side). */
+    @Transient
+    private Set<Long> traineeIds = new HashSet<>();
 
     public Trainer() {}
 
@@ -79,9 +87,14 @@ public class Trainer {
         setUser(stub);
     }
 
+    public Set<Long> getTraineeIds() { return traineeIds; }
+    public void setTraineeIds(Set<Long> traineeIds) {
+        this.traineeIds = traineeIds == null ? new HashSet<>() : new HashSet<>(traineeIds);
+    }
+
     @Override
     public String toString() {
         return "Trainer{id=" + id + ", specialization=" + specialization +
-                ", userId=" + getUserId() + ", user=" + user + "}";
+                ", userId=" + getUserId() + ", traineeIds=" + traineeIds + ", user=" + user + "}";
     }
 }
