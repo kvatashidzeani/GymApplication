@@ -1,6 +1,7 @@
 package com.gymcrm.controller;
 
 import com.gymcrm.dto.ErrorResponse;
+import com.gymcrm.exceptions.AccountLockedException;
 import com.gymcrm.exceptions.TraineeNotFoundException;
 import com.gymcrm.exceptions.TrainerNotFoundException;
 import com.gymcrm.exceptions.TrainingNotFoundException;
@@ -70,6 +71,15 @@ class RestExceptionHandlerTest {
         assertEquals(HttpStatus.UNAUTHORIZED, response.getStatusCode());
         assertEquals("Invalid credentials", response.getBody().getError());
         assertEquals(401, response.getBody().getStatus());
+    }
+
+    @Test
+    void handleAccountLocked_returns429() {
+        ResponseEntity<ErrorResponse> response =
+                handler.handleAccountLocked(new AccountLockedException("User is blocked for 5 minutes"));
+        assertEquals(HttpStatus.TOO_MANY_REQUESTS, response.getStatusCode());
+        assertEquals("User is blocked for 5 minutes", response.getBody().getError());
+        assertEquals(429, response.getBody().getStatus());
     }
 
     @Test

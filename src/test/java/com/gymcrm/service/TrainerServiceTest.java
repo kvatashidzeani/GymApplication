@@ -15,6 +15,7 @@ import com.gymcrm.model.User;
 import com.gymcrm.validators.TrainerValidator;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.springframework.security.crypto.password.PasswordEncoder;
 
 import java.util.List;
 import java.util.Optional;
@@ -33,6 +34,7 @@ class TrainerServiceTest {
     private UsernameGenerator usernameGenerator;
     private PasswordGenerator passwordGenerator;
     private TrainerValidator trainerValidator;
+    private PasswordEncoder passwordEncoder;
 
     @BeforeEach
     void setUp() {
@@ -43,6 +45,7 @@ class TrainerServiceTest {
         usernameGenerator = mock(UsernameGenerator.class);
         passwordGenerator = mock(PasswordGenerator.class);
         trainerValidator = mock(TrainerValidator.class);
+        passwordEncoder = mock(PasswordEncoder.class);
 
         trainerService = new TrainerService();
         trainerService.setTrainerDao(trainerDao);
@@ -53,6 +56,7 @@ class TrainerServiceTest {
         trainerService.setUsernameGenerator(usernameGenerator);
         trainerService.setPasswordGenerator(passwordGenerator);
         trainerService.setTrainerValidator(trainerValidator);
+        trainerService.setPasswordEncoder(passwordEncoder);
     }
 
     @Test
@@ -61,6 +65,7 @@ class TrainerServiceTest {
         when(idGenerator.generateNextId()).thenReturn(10L, 20L);
         when(usernameGenerator.generateUsername("Giorgi", "Janelidze")).thenReturn("Giorgi.Janelidze");
         when(passwordGenerator.generatePassword()).thenReturn("secret");
+        when(passwordEncoder.encode("secret")).thenReturn("hashed-secret");
         when(traineeDao.findAll()).thenReturn(List.of());
         when(userDao.save(any(User.class))).thenAnswer(inv -> inv.getArgument(0));
         when(trainerDao.save(any(Trainer.class))).thenAnswer(inv -> inv.getArgument(0));
@@ -70,6 +75,9 @@ class TrainerServiceTest {
         assertEquals(20L, result.getId());
         assertEquals(10L, result.getUserId());
         assertEquals(cardio, result.getSpecialization());
+        assertEquals("hashed-secret", result.getUser().getPassword());
+        assertEquals("secret", result.getUser().getRawPassword());
+        verify(passwordEncoder).encode("secret");
         verify(userDao).save(any(User.class));
         verify(trainerDao).save(any(Trainer.class));
     }

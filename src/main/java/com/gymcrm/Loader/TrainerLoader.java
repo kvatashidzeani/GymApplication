@@ -1,5 +1,6 @@
 package com.gymcrm.Loader;
 
+import com.gymcrm.model.Trainer;
 import com.gymcrm.model.TrainingType;
 import com.gymcrm.service.TrainerService;
 import com.gymcrm.storage.TrainingTypeStorage;
@@ -53,7 +54,10 @@ public class TrainerLoader implements Loader {
                 return;
             }
 
-            trainerService.createTrainer(t.getFirstName(), t.getLastName(), specialization);
+            Trainer created = trainerService.createTrainer(t.getFirstName(), t.getLastName(), specialization);
+            if (created.getUser() != null) {
+                created.getUser().setRawPassword(null);
+            }
             log.info("Seeded Trainer: {} {} ({})", t.getFirstName(), t.getLastName(), specialization.getTrainingTypeName());
         });
     }

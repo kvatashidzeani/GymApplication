@@ -1,6 +1,7 @@
 package com.gymcrm.controller;
 
 import com.gymcrm.dto.ErrorResponse;
+import com.gymcrm.exceptions.AccountLockedException;
 import com.gymcrm.exceptions.TraineeNotFoundException;
 import com.gymcrm.exceptions.TrainerNotFoundException;
 import com.gymcrm.exceptions.TrainingNotFoundException;
@@ -61,6 +62,12 @@ public class RestExceptionHandler {
     public ResponseEntity<ErrorResponse> handleUnauthorized(UnauthorizedException ex) {
         log.warn("Unauthorized: {}", ex.getMessage());
         return error(HttpStatus.UNAUTHORIZED, ex.getMessage());
+    }
+
+    @ExceptionHandler(AccountLockedException.class)
+    public ResponseEntity<ErrorResponse> handleAccountLocked(AccountLockedException ex) {
+        log.warn("Account locked: {}", ex.getMessage());
+        return error(HttpStatus.TOO_MANY_REQUESTS, ex.getMessage());
     }
 
     @ExceptionHandler(MissingServletRequestParameterException.class)

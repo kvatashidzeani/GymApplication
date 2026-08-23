@@ -16,6 +16,7 @@ import com.gymcrm.model.User;
 import com.gymcrm.validators.TraineeValidator;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.springframework.security.crypto.password.PasswordEncoder;
 
 import java.time.LocalDate;
 import java.util.List;
@@ -24,6 +25,7 @@ import java.util.Set;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.*;
 
 class TraineeServiceTest {
@@ -37,6 +39,7 @@ class TraineeServiceTest {
     private UsernameGenerator usernameGenerator;
     private PasswordGenerator passwordGenerator;
     private TraineeValidator traineeValidator;
+    private PasswordEncoder passwordEncoder;
 
     @BeforeEach
     void setUp() {
@@ -48,6 +51,7 @@ class TraineeServiceTest {
         usernameGenerator = mock(UsernameGenerator.class);
         passwordGenerator = mock(PasswordGenerator.class);
         traineeValidator = mock(TraineeValidator.class);
+        passwordEncoder = mock(PasswordEncoder.class);
 
         traineeService = new TraineeService();
         traineeService.setTraineeDao(traineeDao);
@@ -58,6 +62,7 @@ class TraineeServiceTest {
         traineeService.setUsernameGenerator(usernameGenerator);
         traineeService.setPasswordGenerator(passwordGenerator);
         traineeService.setTraineeValidator(traineeValidator);
+        traineeService.setPasswordEncoder(passwordEncoder);
     }
 
     @Test
@@ -65,6 +70,7 @@ class TraineeServiceTest {
         when(idGenerator.generateNextId()).thenReturn(1L, 2L);
         when(usernameGenerator.generateUsername("Ani", "Smith")).thenReturn("Ani.Smith");
         when(passwordGenerator.generatePassword()).thenReturn("secret");
+        when(passwordEncoder.encode("secret")).thenReturn("hashed-secret");
         when(trainerDao.findAll()).thenReturn(List.of());
         when(userDao.save(any(User.class))).thenAnswer(inv -> inv.getArgument(0));
         when(traineeDao.save(any(Trainee.class))).thenAnswer(inv -> inv.getArgument(0));
@@ -76,6 +82,9 @@ class TraineeServiceTest {
         assertEquals(1L, result.getUserId());
         assertNotNull(result.getUser());
         assertEquals("Ani.Smith", result.getUser().getUsername());
+        assertEquals("hashed-secret", result.getUser().getPassword());
+        assertEquals("secret", result.getUser().getRawPassword());
+        verify(passwordEncoder).encode("secret");
         verify(userDao).save(any(User.class));
         verify(traineeDao).save(any(Trainee.class));
     }
@@ -165,35 +174,40 @@ class TraineeServiceTest {
 
     @Test
     void matchTraineeCredentials_validCredentials_returnsTrue() {
-        User user = new User("Ani", "Smith", "Ani.Smith", "secret", true, 10L);
+        User user = new User("Ani", "Smith", "Ani.Smith", "hashed-secret", true, 10L);
         Trainee trainee = new Trainee(1L, LocalDate.of(2000, 1, 1), "Tbilisi", 10L);
         when(userDao.findAll()).thenReturn(List.of(user));
         when(traineeDao.findAll()).thenReturn(List.of(trainee));
+        when(passwordEncoder.matches("secret", "hashed-secret")).thenReturn(true);
 
         assertTrue(traineeService.matchTraineeCredentials("Ani.Smith", "secret"));
     }
 
     @Test
     void matchTraineeCredentials_wrongPassword_returnsFalse() {
-        User user = new User("Ani", "Smith", "Ani.Smith", "secret", true, 10L);
+        User user = new User("Ani", "Smith", "Ani.Smith", "hashed-secret", true, 10L);
         Trainee trainee = new Trainee(1L, LocalDate.of(2000, 1, 1), "Tbilisi", 10L);
         when(userDao.findAll()).thenReturn(List.of(user));
         when(traineeDao.findAll()).thenReturn(List.of(trainee));
+        when(passwordEncoder.matches("wrong", "hashed-secret")).thenReturn(false);
 
         assertFalse(traineeService.matchTraineeCredentials("Ani.Smith", "wrong"));
     }
 
     @Test
     void changeTraineePassword_success() {
-        User user = new User("Ani", "Smith", "Ani.Smith", "old", true, 10L);
+        User user = new User("Ani", "Smith", "Ani.Smith", "hashed-old", true, 10L);
         Trainee trainee = new Trainee(1L, LocalDate.of(2000, 1, 1), "Tbilisi", 10L);
         when(userDao.findAll()).thenReturn(List.of(user));
         when(traineeDao.findAll()).thenReturn(List.of(trainee));
+        when(passwordEncoder.matches("old", "hashed-old")).thenReturn(true);
+        when(passwordEncoder.encode("new")).thenReturn("hashed-new");
 
         traineeService.changeTraineePassword("Ani.Smith", "old", "new");
 
-        assertEquals("new", user.getPassword());
+        assertEquals("hashed-new", user.getPassword());
         verify(userDao).update(user);
+        verify(passwordEncoder).encode("new");
     }
 
     @Test

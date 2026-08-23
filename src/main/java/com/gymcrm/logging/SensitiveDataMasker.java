@@ -10,7 +10,7 @@ final class SensitiveDataMasker {
     private static final Pattern QUERY_PASSWORD = Pattern.compile(
             "(?i)(password|oldPassword|newPassword)=([^&]*)");
     private static final Pattern JSON_PASSWORD = Pattern.compile(
-            "(?i)(\"(?:password|oldPassword|newPassword)\"\\s*:\\s*)\"[^\"]*\"");
+            "(?i)(\"(?:password|oldPassword|newPassword|token)\"\\s*:\\s*)\"[^\"]*\"");
 
     private SensitiveDataMasker() {
     }

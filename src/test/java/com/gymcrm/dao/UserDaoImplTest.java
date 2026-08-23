@@ -66,6 +66,20 @@ class UserDaoImplTest {
     }
 
     @Test
+    void findByUsernameFound() {
+        User user = new User("Ani", "Smith", "Ani.Smith", "pass", true, 1L);
+        storageMap.put(1L, user);
+        Optional<User> result = userDao.findByUsername("Ani.Smith");
+        assertTrue(result.isPresent());
+        assertEquals("Ani.Smith", result.get().getUsername());
+    }
+
+    @Test
+    void findByUsernameMissing() {
+        assertTrue(userDao.findByUsername("Missing.User").isEmpty());
+    }
+
+    @Test
     void findAllReturnsUsers() {
         storageMap.put(1L, new User("A", "B", "A.B", "p", true, 1L));
         storageMap.put(2L, new User("C", "D", "C.D", "p", true, 2L));

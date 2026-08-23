@@ -59,6 +59,9 @@ public class OpenApiController {
                 "get", loginOperation(),
                 "put", changeLoginOperation()
         ));
+        paths.put("/logout", Map.of(
+                "post", logoutOperation()
+        ));
         doc.put("paths", paths);
 
         Map<String, Object> schemas = new LinkedHashMap<>();
@@ -89,7 +92,16 @@ public class OpenApiController {
                 "type", "object",
                 "properties", Map.of(
                         "username", Map.of("type", "string", "example", "Ani.Kvatashidze"),
-                        "password", Map.of("type", "string", "example", "aB3dE6gH")
+                        "password", Map.of("type", "string", "example", "aB3dE6gH"),
+                        "token", Map.of("type", "string", "example", "eyJhbGciOiJIUzI1NiJ9..."),
+                        "type", Map.of("type", "string", "example", "Bearer")
+                )
+        ));
+        schemas.put("JwtResponse", Map.of(
+                "type", "object",
+                "properties", Map.of(
+                        "token", Map.of("type", "string", "example", "eyJhbGciOiJIUzI1NiJ9..."),
+                        "type", Map.of("type", "string", "example", "Bearer")
                 )
         ));
         schemas.put("ChangeLoginRequest", Map.of(
@@ -129,7 +141,11 @@ public class OpenApiController {
                 "type", "object",
                 "required", List.of("username", "firstName", "lastName", "isActive"),
                 "properties", Map.of(
-                        "username", Map.of("type", "string", "example", "Ani.Kvatashidze"),
+                        "username", Map.of(
+                                "type", "string",
+                                "example", "Ani.Kvatashidze",
+                                "description", "Must match path username; cannot be changed"
+                        ),
                         "firstName", Map.of("type", "string", "example", "Ani"),
                         "lastName", Map.of("type", "string", "example", "Kvatashidze"),
                         "dateOfBirth", Map.of("type", "string", "format", "date", "example", "2005-06-09"),
@@ -181,7 +197,11 @@ public class OpenApiController {
                 "type", "object",
                 "required", List.of("username", "firstName", "lastName", "isActive"),
                 "properties", Map.of(
-                        "username", Map.of("type", "string", "example", "Mike.Brown"),
+                        "username", Map.of(
+                                "type", "string",
+                                "example", "Mike.Brown",
+                                "description", "Must match path username; cannot be changed"
+                        ),
                         "firstName", Map.of("type", "string", "example", "Mike"),
                         "lastName", Map.of("type", "string", "example", "Brown"),
                         "specialization", Map.of(
@@ -240,7 +260,27 @@ public class OpenApiController {
                         "trainingTypeId", Map.of("type", "integer", "example", 1)
                 )
         ));
-        doc.put("components", Map.of("schemas", schemas));
+        schemas.put("ErrorResponse", Map.of(
+                "type", "object",
+                "properties", Map.of(
+                        "error", Map.of("type", "string", "example", "Trainee not found"),
+                        "status", Map.of("type", "integer", "example", 404),
+                        "transactionId", Map.of("type", "string", "example", "a1b2c3d4-..."),
+                        "timestamp", Map.of("type", "string", "format", "date-time")
+                )
+        ));
+        doc.put("components", Map.of(
+                "schemas", schemas,
+                "securitySchemes", Map.of(
+                        "bearerAuth", Map.of(
+                                "type", "http",
+                                "scheme", "bearer",
+                                "bearerFormat", "JWT",
+                                "description", "JWT obtained from POST /trainees/register, POST /trainers/register, or GET /login"
+                        )
+                )
+        ));
+        doc.put("security", List.of(Map.of("bearerAuth", List.of())));
         return doc;
     }
 
@@ -249,11 +289,8 @@ public class OpenApiController {
         op.put("tags", List.of("Trainee"));
         op.put("summary", "Trainee Registration");
         op.put("description",
-                "Registers a trainee. First name and last name are required. "
-                        + "Date of birth and address are optional. "
-                        + "Username (FirstName.LastName[+serial]) and password are generated automatically. "
-                        + "Cannot register if already a trainer with the same first and last name. "
-                        + "Returns generated username and password.");
+                "Creates a trainee profile (Create Profile). Returns username, password, and JWT Bearer token.");
+        op.put("security", List.of());
         op.put("requestBody", Map.of(
                 "required", true,
                 "content", Map.of(
@@ -308,10 +345,21 @@ public class OpenApiController {
                                 )
                         )
                 ),
-                "401", Map.of("description", "Unauthorized"),
-                "404", Map.of("description", "Trainee not found")
+                "401", errorResponse("Unauthorized"),
+                "404", errorResponse("Trainee not found")
         ));
         return op;
+    }
+
+    private static Map<String, Object> errorResponse(String description) {
+        Map<String, Object> response = new LinkedHashMap<>();
+        response.put("description", description);
+        response.put("content", Map.of(
+                "application/json", Map.of(
+                        "schema", Map.of("$ref", "#/components/schemas/ErrorResponse")
+                )
+        ));
+        return response;
     }
 
     private static Map<String, Object> updateTraineeProfileOperation() {
@@ -597,10 +645,9 @@ public class OpenApiController {
         op.put("tags", List.of("Trainer"));
         op.put("summary", "Trainer Registration");
         op.put("description",
-                "Registers a trainer. First name, last name, and specialization (training type name) "
-                        + "are required. Username (FirstName.LastName[+serial]) and password are generated automatically. "
-                        + "Cannot register if already a trainee with the same first and last name. "
-                        + "Returns generated username and password.");
+                "Creates a trainer profile (Create Profile). Returns username, password, and JWT Bearer token. "
+                        + "Specialization must be an existing training type name.");
+        op.put("security", List.of());
         op.put("requestBody", Map.of(
                 "required", true,
                 "content", Map.of(
@@ -816,7 +863,8 @@ public class OpenApiController {
         op.put("summary", "Add Training");
         op.put("description",
                 "Creates a training session. Training type is taken from the trainer's specialization. "
-                        + "Requires username and password of the trainee or trainer involved.");
+                        + "Requires username and password of the trainee or trainer involved. "
+                        + "Training update and delete are not supported via REST.");
         op.put("parameters", List.of(
                 Map.of(
                         "name", "username",
@@ -843,9 +891,9 @@ public class OpenApiController {
         ));
         op.put("responses", Map.of(
                 "200", Map.of("description", "Training created"),
-                "400", Map.of("description", "Invalid request"),
-                "401", Map.of("description", "Unauthorized"),
-                "404", Map.of("description", "Trainee or trainer not found")
+                "400", errorResponse("Invalid request"),
+                "401", errorResponse("Unauthorized"),
+                "404", errorResponse("Trainee or trainer not found")
         ));
         return op;
     }
@@ -855,7 +903,7 @@ public class OpenApiController {
         op.put("tags", List.of("Training Type"));
         op.put("summary", "Get Training types");
         op.put("description",
-                "Returns all available training types. "
+                "Returns the constant list of training types (seeded; not updatable from the application). "
                         + "Requires username and password (trainee or trainer authentication).");
         op.put("parameters", List.of(
                 Map.of(
@@ -894,7 +942,10 @@ public class OpenApiController {
         Map<String, Object> op = new LinkedHashMap<>();
         op.put("tags", List.of("Auth"));
         op.put("summary", "Login");
-        op.put("description", "Validates username and password for a trainee or trainer. Returns 200 OK if valid.");
+        op.put("description",
+                "Authenticates against BCrypt hashes and returns a JWT Bearer token. "
+                        + "After 3 failed attempts the username is blocked for 5 minutes.");
+        op.put("security", List.of());
         op.put("parameters", List.of(
                 Map.of(
                         "name", "username",
@@ -912,9 +963,17 @@ public class OpenApiController {
                 )
         ));
         op.put("responses", Map.of(
-                "200", Map.of("description", "Credentials valid"),
-                "400", Map.of("description", "Missing username or password"),
-                "401", Map.of("description", "Invalid credentials")
+                "200", Map.of(
+                        "description", "Credentials valid; JWT returned",
+                        "content", Map.of(
+                                "application/json", Map.of(
+                                        "schema", Map.of("$ref", "#/components/schemas/JwtResponse")
+                                )
+                        )
+                ),
+                "400", errorResponse("Missing username or password"),
+                "401", errorResponse("Invalid credentials"),
+                "429", errorResponse("User temporarily blocked after too many failed logins")
         ));
         return op;
     }
@@ -936,6 +995,19 @@ public class OpenApiController {
                 "200", Map.of("description", "Password changed"),
                 "400", Map.of("description", "Missing required fields"),
                 "401", Map.of("description", "Invalid username or old password")
+        ));
+        return op;
+    }
+
+    private static Map<String, Object> logoutOperation() {
+        Map<String, Object> op = new LinkedHashMap<>();
+        op.put("tags", List.of("Auth"));
+        op.put("summary", "Logout");
+        op.put("description",
+                "Logs out via Spring Security and blacklists the JWT from Authorization: Bearer header.");
+        op.put("responses", Map.of(
+                "200", Map.of("description", "Logout successful"),
+                "401", errorResponse("Not authenticated")
         ));
         return op;
     }

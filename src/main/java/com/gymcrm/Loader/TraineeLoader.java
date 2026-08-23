@@ -34,9 +34,12 @@ public class TraineeLoader implements Loader {
         }
 
         trainees.forEach(t -> {
-            traineeService.createTrainee(
+            var created = traineeService.createTrainee(
                     t.getFirstName(), t.getLastName(), t.getDateOfBirth(), t.getAddress()
             );
+            if (created.getUser() != null) {
+                created.getUser().setRawPassword(null);
+            }
             log.info("Seeded Trainee: {} {}", t.getFirstName(), t.getLastName());
         });
         log.info("Successfully parsed all of the Trainees.");

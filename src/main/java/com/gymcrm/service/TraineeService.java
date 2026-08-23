@@ -1,15 +1,8 @@
 package com.gymcrm.service;
 
-import com.gymcrm.exceptions.TraineeNotFoundException;
-import com.gymcrm.exceptions.TrainerNotFoundException;
-import com.gymcrm.Util.IdGenerator;
-import com.gymcrm.Util.PasswordGenerator;
-import com.gymcrm.Util.UsernameGenerator;
-import com.gymcrm.dao.TrainingDao;
-import com.gymcrm.dao.UserDao;
-import com.gymcrm.dao.impl.TraineeDaoImpl;
-import com.gymcrm.dao.impl.TrainerDaoImpl;
 import com.gymcrm.model.Trainee;
+<<<<<<< Updated upstream
+=======
 import com.gymcrm.model.Trainer;
 import com.gymcrm.model.Training;
 import com.gymcrm.model.User;
@@ -17,13 +10,23 @@ import com.gymcrm.validators.TraineeValidator;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+>>>>>>> Stashed changes
 
-import jakarta.annotation.PostConstruct;
-import java.time.LocalDate;
-import java.util.HashSet;
 import java.util.List;
+<<<<<<< Updated upstream
+import java.util.Optional;
+
+public interface TraineeService {
+    Trainee createTrainee(Trainee trainee);
+    Trainee updateTrainee(Trainee trainee);
+    void deleteTrainee(Long id);
+    Optional<Trainee> selectTrainee(Long id);
+    List<Trainee> selectAllTrainees();
+}
+=======
 import java.util.Locale;
 import java.util.Set;
 import java.util.stream.Collectors;
@@ -40,6 +43,7 @@ public class TraineeService {
     private UserDao userDao;
     private IdGenerator idGenerator;
     private TraineeValidator traineeValidator;
+    private PasswordEncoder passwordEncoder;
 
     @Autowired
     public void setIdGenerator(IdGenerator idGenerator) {
@@ -94,6 +98,12 @@ public class TraineeService {
         log.debug("PasswordGenerator injected into TraineeService");
     }
 
+    @Autowired
+    public void setPasswordEncoder(PasswordEncoder passwordEncoder) {
+        this.passwordEncoder = passwordEncoder;
+        log.debug("PasswordEncoder injected into TraineeService");
+    }
+
     /**
      * Create Trainee profile per DB schema:
      * 1) create User row
@@ -108,7 +118,7 @@ public class TraineeService {
         ensureNotRegisteredAsOtherRole(firstName, lastName);
 
         String username = usernameGenerator.generateUsername(firstName, lastName);
-        String password = passwordGenerator.generatePassword();
+        String rawPassword = passwordGenerator.generatePassword();
         log.info("Generated username: {}", username);
 
         User user = new User();
@@ -116,7 +126,7 @@ public class TraineeService {
         user.setFirstName(firstName);
         user.setLastName(lastName);
         user.setUsername(username);
-        user.setPassword(password);
+        user.setPassword(passwordEncoder.encode(rawPassword));
         user.setActive(true);
         userDao.save(user);
 
@@ -128,6 +138,8 @@ public class TraineeService {
         trainee.setUser(user);
 
         Trainee saved = traineeDao.save(trainee);
+        // Expose plain password once for registration response (not stored)
+        saved.getUser().setRawPassword(rawPassword);
         log.info("Trainee created: id={}, userId={}, username={}",
                 saved.getId(), saved.getUserId(), username);
 
@@ -531,7 +543,7 @@ public class TraineeService {
             return false;
         }
 
-        boolean matches = password.equals(user.getPassword());
+        boolean matches = passwordEncoder.matches(password, user.getPassword());
         log.info("Trainee credential match for {}: {}", username, matches);
         return matches;
     }
@@ -563,7 +575,7 @@ public class TraineeService {
                 .findFirst()
                 .orElseThrow(() -> new TraineeNotFoundException("Trainee not found with username: " + username));
 
-        user.setPassword(newPassword);
+        user.setPassword(passwordEncoder.encode(newPassword));
         userDao.update(user);
         log.info("Password changed successfully for trainee: {}", username);
     }
@@ -574,3 +586,4 @@ public class TraineeService {
         }
     }
 }
+>>>>>>> Stashed changes

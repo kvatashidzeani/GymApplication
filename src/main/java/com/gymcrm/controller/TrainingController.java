@@ -7,6 +7,7 @@ import com.gymcrm.exceptions.UnauthorizedException;
 import com.gymcrm.facade.GymFacade;
 import com.gymcrm.model.Trainer;
 import com.gymcrm.model.TrainingType;
+import com.gymcrm.security.SecurityUtils;
 import com.gymcrm.validators.RequestValidation;
 import io.micrometer.core.instrument.Timer;
 import io.swagger.annotations.Api;
@@ -20,7 +21,6 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 @Api(value = "Training API", tags = "Training", description = "Training session management operations")
@@ -41,11 +41,12 @@ public class TrainingController {
     /**
      * 14. Add Training (POST)
      * Training type is taken from the trainer's specialization.
+     * Authenticated user (JWT Bearer) must be the trainee or the trainer in the request.
      */
     @ApiOperation(
             value = "Add Training",
             notes = "Creates a training. Training type is derived from the trainer specialization. "
-                    + "Password must match the trainee or trainer.",
+                    + "Requires JWT Bearer auth as the trainee or trainer.",
             response = Void.class
     )
     @ApiResponses({
@@ -56,23 +57,18 @@ public class TrainingController {
     })
     @PostMapping
     public ResponseEntity<Void> addTraining(
-            @ApiParam(value = "Authenticated username (trainee or trainer)", required = true)
-            @RequestParam("username") String username,
-            @ApiParam(value = "Password", required = true)
-            @RequestParam("password") String password,
             @ApiParam(value = "Training creation request", required = true)
             @RequestBody AddTrainingRequest request) {
 
+        String authUsername = SecurityUtils.currentUsername();
         log.info("POST /trainings authUser={}, trainee={}, trainer={}, name={}",
-                username, request != null ? request.getTraineeUsername() : null,
+                authUsername, request != null ? request.getTraineeUsername() : null,
                 request != null ? request.getTrainerUsername() : null,
                 request != null ? request.getTrainingName() : null);
 
         Timer.Sample sample = gymMetrics.startTrainingCreateTimer();
         try {
             RequestValidation.requireNonNull(request, "Request body");
-            String authUsername = RequestValidation.requireUsername(username);
-            String pass = RequestValidation.requirePassword(password);
             String traineeUsername = RequestValidation.requireNonBlank(request.getTraineeUsername(), "Trainee username");
             String trainerUsername = RequestValidation.requireNonBlank(request.getTrainerUsername(), "Trainer username");
             RequestValidation.requireNonBlank(request.getTrainingName(), "Training name");
@@ -82,10 +78,7 @@ public class TrainingController {
                 throw new IllegalArgumentException("Training duration is required and must be positive");
             }
 
-            boolean authorized = (authUsername.equals(traineeUsername)
-                    && gymFacade.matchTraineeCredentials(traineeUsername, pass))
-                    || (authUsername.equals(trainerUsername)
-                    && gymFacade.matchTrainerCredentials(trainerUsername, pass));
+            boolean authorized = authUsername.equals(traineeUsername) || authUsername.equals(trainerUsername);
             if (!authorized) {
                 log.warn("Unauthorized add training for authUser={}, trainee={}, trainer={}",
                         authUsername, traineeUsername, trainerUsername);

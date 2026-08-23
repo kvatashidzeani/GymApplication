@@ -53,6 +53,16 @@ public class UserDaoImpl implements UserDao {
     }
 
     @Override
+    public Optional<User> findByUsername(String username) {
+        if (username == null || username.isBlank()) {
+            return Optional.empty();
+        }
+        return userStorage.getStorage().values().stream()
+                .filter(u -> username.equals(u.getUsername()))
+                .findFirst();
+    }
+
+    @Override
     public List<User> findAll() {
         return new ArrayList<>(userStorage.getStorage().values());
     }

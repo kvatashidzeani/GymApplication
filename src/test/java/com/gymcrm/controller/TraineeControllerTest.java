@@ -16,6 +16,9 @@ import com.gymcrm.model.Trainer;
 import com.gymcrm.model.Training;
 import com.gymcrm.model.TrainingType;
 import com.gymcrm.model.User;
+import com.gymcrm.security.JwtService;
+import com.gymcrm.security.SecurityTestUtils;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.http.HttpStatus;
@@ -32,13 +35,20 @@ class TraineeControllerTest {
 
     private GymFacade gymFacade;
     private GymMetrics gymMetrics;
+    private JwtService jwtService;
     private TraineeController controller;
 
     @BeforeEach
     void setUp() {
         gymFacade = mock(GymFacade.class);
         gymMetrics = mock(GymMetrics.class);
-        controller = new TraineeController(gymFacade, gymMetrics);
+        jwtService = mock(JwtService.class);
+        controller = new TraineeController(gymFacade, gymMetrics, jwtService);
+    }
+
+    @AfterEach
+    void tearDown() {
+        SecurityTestUtils.clear();
     }
 
     @Test
@@ -49,12 +59,14 @@ class TraineeControllerTest {
         request.setDateOfBirth(LocalDate.of(2005, 6, 9));
         request.setAddress("Gora");
 
-        User user = new User("Ani", "Kvatashidze", "Ani.Kvatashidze", "abc12345", true, 1L);
+        User user = new User("Ani", "Kvatashidze", "Ani.Kvatashidze", "hashed", true, 1L);
+        user.setRawPassword("abc12345");
         Trainee trainee = new Trainee(2L, LocalDate.of(2005, 6, 9), "Gora", 1L);
         trainee.setUser(user);
 
         when(gymFacade.createTrainee("Ani", "Kvatashidze",
                 LocalDate.of(2005, 6, 9), "Gora")).thenReturn(trainee);
+        when(jwtService.generateToken("Ani.Kvatashidze")).thenReturn("jwt-token");
 
         ResponseEntity<RegistrationResponse> response = controller.register(request);
 
@@ -62,6 +74,8 @@ class TraineeControllerTest {
         assertNotNull(response.getBody());
         assertEquals("Ani.Kvatashidze", response.getBody().getUsername());
         assertEquals("abc12345", response.getBody().getPassword());
+        assertEquals("jwt-token", response.getBody().getToken());
+        assertEquals("Bearer", response.getBody().getType());
         verify(gymFacade).createTrainee("Ani", "Kvatashidze",
                 LocalDate.of(2005, 6, 9), "Gora");
         verify(gymMetrics).traineeRegistered();
@@ -73,29 +87,33 @@ class TraineeControllerTest {
         request.setFirstName("Ani");
         request.setLastName("Smith");
 
-        User user = new User("Ani", "Smith", "Ani.Smith", "pass", true, 1L);
+        User user = new User("Ani", "Smith", "Ani.Smith", "hashed", true, 1L);
+        user.setRawPassword("pass");
         Trainee trainee = new Trainee();
         trainee.setUser(user);
 
         when(gymFacade.createTrainee("Ani", "Smith", null, null)).thenReturn(trainee);
+        when(jwtService.generateToken("Ani.Smith")).thenReturn("jwt-2");
 
         ResponseEntity<RegistrationResponse> response = controller.register(request);
 
         assertEquals(HttpStatus.OK, response.getStatusCode());
         assertEquals("Ani.Smith", response.getBody().getUsername());
         assertEquals("pass", response.getBody().getPassword());
+        assertEquals("jwt-2", response.getBody().getToken());
     }
 
     @Test
     void getProfile_returnsProfile() {
+        SecurityTestUtils.authenticate("Ani.Smith");
+
         User user = new User("Ani", "Smith", "Ani.Smith", "pass", true, 1L);
         Trainee trainee = new Trainee(2L, LocalDate.of(2000, 1, 1), "Tbilisi", 1L);
         trainee.setUser(user);
 
-        when(gymFacade.matchTraineeCredentials("Ani.Smith", "pass")).thenReturn(true);
         when(gymFacade.selectTraineeByUsername("Ani.Smith")).thenReturn(trainee);
 
-        ResponseEntity<TraineeProfileResponse> response = controller.getProfile("Ani.Smith", "pass");
+        ResponseEntity<TraineeProfileResponse> response = controller.getProfile("Ani.Smith");
 
         assertEquals(HttpStatus.OK, response.getStatusCode());
         assertNotNull(response.getBody());
@@ -108,15 +126,24 @@ class TraineeControllerTest {
 
     @Test
     void getProfile_unauthorized_throwsUnauthorized() {
-        when(gymFacade.matchTraineeCredentials("Ani.Smith", "wrong")).thenReturn(false);
+        SecurityTestUtils.authenticate("Someone.Else");
 
         assertThrows(UnauthorizedException.class,
-                () -> controller.getProfile("Ani.Smith", "wrong"));
+                () -> controller.getProfile("Ani.Smith"));
+        verify(gymFacade, never()).selectTraineeByUsername(any());
+    }
+
+    @Test
+    void getProfile_withoutAuth_throwsUnauthorized() {
+        assertThrows(UnauthorizedException.class,
+                () -> controller.getProfile("Ani.Smith"));
         verify(gymFacade, never()).selectTraineeByUsername(any());
     }
 
     @Test
     void updateProfile_returnsUpdatedProfile() {
+        SecurityTestUtils.authenticate("Ani.Smith");
+
         UpdateTraineeProfileRequest request = new UpdateTraineeProfileRequest();
         request.setUsername("Ani.Smith");
         request.setFirstName("Ani");
@@ -128,12 +155,11 @@ class TraineeControllerTest {
         Trainee trainee = new Trainee(2L, null, "Vake", 1L);
         trainee.setUser(user);
 
-        when(gymFacade.matchTraineeCredentials("Ani.Smith", "pass")).thenReturn(true);
         when(gymFacade.selectTraineeByUsername("Ani.Smith")).thenReturn(trainee);
         when(gymFacade.updateTrainee(2L, "Ani", "Updated", null, "Vake", true)).thenReturn(trainee);
 
         ResponseEntity<TraineeProfileResponse> response =
-                controller.updateProfile("Ani.Smith", "pass", request);
+                controller.updateProfile("Ani.Smith", request);
 
         assertEquals(HttpStatus.OK, response.getStatusCode());
         assertEquals("Ani.Smith", response.getBody().getUsername());
@@ -144,9 +170,9 @@ class TraineeControllerTest {
 
     @Test
     void deleteProfile_returns200() {
-        when(gymFacade.matchTraineeCredentials("Ani.Smith", "pass")).thenReturn(true);
+        SecurityTestUtils.authenticate("Ani.Smith");
 
-        ResponseEntity<Void> response = controller.deleteProfile("Ani.Smith", "pass");
+        ResponseEntity<Void> response = controller.deleteProfile("Ani.Smith");
 
         assertEquals(HttpStatus.OK, response.getStatusCode());
         verify(gymFacade).deleteTraineeByUsername("Ani.Smith");
@@ -154,25 +180,24 @@ class TraineeControllerTest {
 
     @Test
     void deleteProfile_unauthorized_throwsUnauthorized() {
-        when(gymFacade.matchTraineeCredentials("Ani.Smith", "wrong")).thenReturn(false);
-
         assertThrows(UnauthorizedException.class,
-                () -> controller.deleteProfile("Ani.Smith", "wrong"));
+                () -> controller.deleteProfile("Ani.Smith"));
         verify(gymFacade, never()).deleteTraineeByUsername(any());
     }
 
     @Test
     void getNotAssignedActiveTrainers_returnsList() {
+        SecurityTestUtils.authenticate("Ani.Smith");
+
         TrainingType cardio = new TrainingType("Cardio", 1L);
         User trainerUser = new User("Mike", "Brown", "Mike.Brown", "x", true, 5L);
         Trainer trainer = new Trainer(10L, cardio, 5L);
         trainer.setUser(trainerUser);
 
-        when(gymFacade.matchTraineeCredentials("Ani.Smith", "pass")).thenReturn(true);
         when(gymFacade.getTrainersNotAssignedToTrainee("Ani.Smith")).thenReturn(List.of(trainer));
 
         ResponseEntity<List<TrainerShortDto>> response =
-                controller.getNotAssignedActiveTrainers("Ani.Smith", "pass");
+                controller.getNotAssignedActiveTrainers("Ani.Smith");
 
         assertEquals(HttpStatus.OK, response.getStatusCode());
         assertEquals(1, response.getBody().size());
@@ -184,15 +209,17 @@ class TraineeControllerTest {
 
     @Test
     void getNotAssignedActiveTrainers_unauthorized_throwsUnauthorized() {
-        when(gymFacade.matchTraineeCredentials("Ani.Smith", "wrong")).thenReturn(false);
+        SecurityTestUtils.authenticate("Someone.Else");
 
         assertThrows(UnauthorizedException.class,
-                () -> controller.getNotAssignedActiveTrainers("Ani.Smith", "wrong"));
+                () -> controller.getNotAssignedActiveTrainers("Ani.Smith"));
         verify(gymFacade, never()).getTrainersNotAssignedToTrainee(any());
     }
 
     @Test
     void updateTrainersList_returnsAssignedTrainers() {
+        SecurityTestUtils.authenticate("Ani.Smith");
+
         UpdateTraineeTrainersRequest request = new UpdateTraineeTrainersRequest();
         request.setTraineeUsername("Ani.Smith");
         request.setTrainersList(List.of(new UpdateTraineeTrainersRequest.TrainerUsernameDto("Mike.Brown")));
@@ -207,12 +234,11 @@ class TraineeControllerTest {
         trainee.setUser(traineeUser);
         trainee.setTrainerIds(Set.of(10L));
 
-        when(gymFacade.matchTraineeCredentials("Ani.Smith", "pass")).thenReturn(true);
         when(gymFacade.selectTraineeByUsername("Ani.Smith")).thenReturn(trainee);
         when(gymFacade.selectTrainer(10L)).thenReturn(trainer);
 
         ResponseEntity<List<TrainerShortDto>> response =
-                controller.updateTrainersList("Ani.Smith", "pass", request);
+                controller.updateTrainersList("Ani.Smith", request);
 
         assertEquals(HttpStatus.OK, response.getStatusCode());
         assertEquals(1, response.getBody().size());
@@ -223,6 +249,8 @@ class TraineeControllerTest {
 
     @Test
     void getTrainings_returnsList() {
+        SecurityTestUtils.authenticate("Ani.Smith");
+
         TrainingType cardio = new TrainingType("Cardio", 1L);
         Training training = new Training(1L, 2L, 10L, "Morning Cardio", cardio,
                 LocalDate.of(2024, 11, 10), 45);
@@ -231,13 +259,12 @@ class TraineeControllerTest {
         Trainer trainer = new Trainer(10L, cardio, 5L);
         trainer.setUser(trainerUser);
 
-        when(gymFacade.matchTraineeCredentials("Ani.Smith", "pass")).thenReturn(true);
         when(gymFacade.getTraineeTrainingsList("Ani.Smith", null, null, null, null))
                 .thenReturn(List.of(training));
         when(gymFacade.selectTrainer(10L)).thenReturn(trainer);
 
         ResponseEntity<List<TrainingListItemDto>> response =
-                controller.getTrainings("Ani.Smith", "pass", null, null, null, null);
+                controller.getTrainings("Ani.Smith", null, null, null, null);
 
         assertEquals(HttpStatus.OK, response.getStatusCode());
         assertEquals(1, response.getBody().size());
@@ -249,6 +276,8 @@ class TraineeControllerTest {
 
     @Test
     void setActive_returns200() {
+        SecurityTestUtils.authenticate("Ani.Smith");
+
         ActivateRequest request = new ActivateRequest();
         request.setUsername("Ani.Smith");
         request.setIsActive(false);
@@ -257,11 +286,10 @@ class TraineeControllerTest {
         Trainee trainee = new Trainee(2L, LocalDate.of(2000, 1, 1), "Tbilisi", 1L);
         trainee.setUser(user);
 
-        when(gymFacade.matchTraineeCredentials("Ani.Smith", "pass")).thenReturn(true);
         when(gymFacade.selectTraineeByUsername("Ani.Smith")).thenReturn(trainee);
         when(gymFacade.setTraineeActive(2L, false)).thenReturn(trainee);
 
-        ResponseEntity<Void> response = controller.setActive("Ani.Smith", "pass", request);
+        ResponseEntity<Void> response = controller.setActive("Ani.Smith", request);
 
         assertEquals(HttpStatus.OK, response.getStatusCode());
         verify(gymFacade).setTraineeActive(2L, false);

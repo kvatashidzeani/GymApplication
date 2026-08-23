@@ -39,6 +39,7 @@ public class SwaggerUiController {
                     url: '/v3/api-docs',
                     dom_id: '#swagger-ui',
                     deepLinking: true,
+                    persistAuthorization: true,
                     presets: [
                       SwaggerUIBundle.presets.apis,
                       SwaggerUIStandalonePreset

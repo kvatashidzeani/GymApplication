@@ -43,9 +43,9 @@ public class GymApplication {
 
         // 3) & 4) Username and password matching
         String traineeUsername = trainee.getUser().getUsername();
-        String traineePassword = trainee.getUser().getPassword();
+        String traineePassword = trainee.getUser().getRawPassword();
         String trainerUsername = trainer.getUser().getUsername();
-        String trainerPassword = trainer.getUser().getPassword();
+        String trainerPassword = trainer.getUser().getRawPassword();
 
         System.out.println("\nTrainee credentials match (correct): "
                 + facade.matchTraineeCredentials(traineeUsername, traineePassword));
@@ -62,7 +62,7 @@ public class GymApplication {
                 + ", userId=" + selectedTrainer.getUserId()
                 + ", username=" + selectedTrainer.getUser().getUsername());
 
-        // 6) Select Trainee by username
+        // 6) Select Trainee By UserName
         Trainee selectedTrainee = facade.selectTraineeByUsername(traineeUsername);
         System.out.println("Selected Trainee by username: id=" + selectedTrainee.getId()
                 + ", userId=" + selectedTrainee.getUserId()

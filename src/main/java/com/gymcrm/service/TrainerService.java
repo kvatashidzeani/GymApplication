@@ -1,15 +1,8 @@
 package com.gymcrm.service;
 
-import com.gymcrm.exceptions.TrainerNotFoundException;
-import com.gymcrm.Util.IdGenerator;
-import com.gymcrm.Util.PasswordGenerator;
-import com.gymcrm.Util.UsernameGenerator;
-import com.gymcrm.dao.TraineeDao;
-import com.gymcrm.dao.TrainerDao;
-import com.gymcrm.dao.TrainingDao;
-import com.gymcrm.dao.UserDao;
-import com.gymcrm.model.Trainee;
 import com.gymcrm.model.Trainer;
+<<<<<<< Updated upstream
+=======
 import com.gymcrm.model.Training;
 import com.gymcrm.model.TrainingType;
 import com.gymcrm.model.User;
@@ -17,15 +10,22 @@ import com.gymcrm.validators.TrainerValidator;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+>>>>>>> Stashed changes
 
-import jakarta.annotation.PostConstruct;
-import java.time.LocalDate;
 import java.util.List;
-import java.util.Locale;
-import java.util.stream.Collectors;
+import java.util.Optional;
 
+<<<<<<< Updated upstream
+public interface TrainerService {
+    Trainer createTrainer(Trainer trainer);
+    Trainer updateTrainer(Trainer trainer);
+    Optional<Trainer> selectTrainer(Long id);
+    List<Trainer> selectAllTrainers();
+}
+=======
 @Service
 public class TrainerService {
     private static final Logger log = LoggerFactory.getLogger(TrainerService.class);
@@ -38,6 +38,7 @@ public class TrainerService {
     private PasswordGenerator passwordGenerator;
     private IdGenerator idGenerator;
     private TrainerValidator trainervalidator;
+    private PasswordEncoder passwordEncoder;
 
     @Autowired
     public void setIdGenerator(IdGenerator idGenerator) {
@@ -78,6 +79,12 @@ public class TrainerService {
     }
 
     @Autowired
+    public void setPasswordEncoder(PasswordEncoder passwordEncoder) {
+        this.passwordEncoder = passwordEncoder;
+        log.debug("PasswordEncoder injected into TrainerService");
+    }
+
+    @Autowired
     public void setTrainerValidator(TrainerValidator trainervalidator) {
         this.trainervalidator = trainervalidator;
     }
@@ -103,7 +110,7 @@ public class TrainerService {
         ensureNotRegisteredAsOtherRole(firstName, lastName);
 
         String username = usernameGenerator.generateUsername(firstName, lastName);
-        String password = passwordGenerator.generatePassword();
+        String rawPassword = passwordGenerator.generatePassword();
         log.info("Generated username: {}", username);
 
         User user = new User();
@@ -111,7 +118,7 @@ public class TrainerService {
         user.setFirstName(firstName);
         user.setLastName(lastName);
         user.setUsername(username);
-        user.setPassword(password);
+        user.setPassword(passwordEncoder.encode(rawPassword));
         user.setActive(true);
         userDao.save(user);
 
@@ -122,6 +129,7 @@ public class TrainerService {
         trainer.setUser(user);
 
         Trainer savedTrainer = trainerDao.save(trainer);
+        savedTrainer.getUser().setRawPassword(rawPassword);
         log.info("Successfully created Trainer: id={}, userId={}, username={}",
                 savedTrainer.getId(), savedTrainer.getUserId(), username);
 
@@ -147,6 +155,7 @@ public class TrainerService {
         User user = userDao.findById(trainer.getUserId())
                 .orElseThrow(() -> new IllegalStateException("User not found for trainer id: " + id));
 
+        // Username is immutable — never updated here.
         user.setFirstName(firstName);
         user.setLastName(lastName);
         if (isActive != null) {
@@ -164,6 +173,7 @@ public class TrainerService {
 
     /**
      * Activate or de-activate Trainer (updates User.isActive via userId FK).
+     * Non-idempotent: fails if the profile is already in the requested state.
      */
     public Trainer setTrainerActive(Long id, boolean isActive) {
         log.info("Setting trainer id={} active={}", id, isActive);
@@ -320,7 +330,7 @@ public class TrainerService {
             return false;
         }
 
-        boolean matches = password.equals(user.getPassword());
+        boolean matches = passwordEncoder.matches(password, user.getPassword());
         log.info("Trainer credential match for {}: {}", username, matches);
         return matches;
     }
@@ -352,7 +362,7 @@ public class TrainerService {
                 .findFirst()
                 .orElseThrow(() -> new TrainerNotFoundException("Trainer not found with username: " + username));
 
-        user.setPassword(newPassword);
+        user.setPassword(passwordEncoder.encode(newPassword));
         userDao.update(user);
         log.info("Password changed successfully for trainer: {}", username);
     }
@@ -388,3 +398,4 @@ public class TrainerService {
         }
     }
 }
+>>>>>>> Stashed changes

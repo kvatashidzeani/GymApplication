@@ -46,5 +46,6 @@ public class GymRestApplication {
         log.info("Prometheus:  {}/actuator/prometheus", base);
         log.info("Metrics:     {}/actuator/metrics", base);
         log.info("Info:        {}/actuator/info", base);
+        log.info("Auth: JWT Bearer — register/login issue token; POST /logout blacklists token; Swagger is public");
     }
 }

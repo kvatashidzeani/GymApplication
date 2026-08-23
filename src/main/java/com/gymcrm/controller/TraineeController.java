@@ -10,12 +10,13 @@ import com.gymcrm.dto.TrainerShortDto;
 import com.gymcrm.dto.TrainingListItemDto;
 import com.gymcrm.dto.UpdateTraineeProfileRequest;
 import com.gymcrm.dto.UpdateTraineeTrainersRequest;
-import com.gymcrm.exceptions.UnauthorizedException;
 import com.gymcrm.facade.GymFacade;
 import com.gymcrm.model.Trainee;
 import com.gymcrm.model.Trainer;
 import com.gymcrm.model.Training;
 import com.gymcrm.model.User;
+import com.gymcrm.security.JwtService;
+import com.gymcrm.security.SecurityUtils;
 import com.gymcrm.validators.RequestValidation;
 import io.swagger.annotations.Api;
 import io.swagger.annotations.ApiOperation;
@@ -51,20 +52,22 @@ public class TraineeController {
 
     private final GymFacade gymFacade;
     private final GymMetrics gymMetrics;
+    private final JwtService jwtService;
 
-    public TraineeController(GymFacade gymFacade, GymMetrics gymMetrics) {
+    public TraineeController(GymFacade gymFacade, GymMetrics gymMetrics, JwtService jwtService) {
         this.gymFacade = gymFacade;
         this.gymMetrics = gymMetrics;
+        this.jwtService = jwtService;
     }
 
     /**
-     * 1. Trainee Registration (POST)
+     * 1. Trainee Registration (POST) — Create Profile.
      * Request: firstName, lastName (required); dateOfBirth, address (optional)
-     * Response: username, password
+     * Response: username, password, JWT Bearer token
      */
     @ApiOperation(
             value = "Trainee Registration",
-            notes = "Creates a trainee profile. Username and password are generated automatically.",
+            notes = "Creates a trainee profile and returns credentials plus a JWT Bearer token.",
             response = RegistrationResponse.class
     )
     @ApiResponses({
@@ -88,23 +91,26 @@ public class TraineeController {
                 request.getDateOfBirth(),
                 request.getAddress());
 
-        RegistrationResponse response = new RegistrationResponse(
-                trainee.getUser().getUsername(),
-                trainee.getUser().getPassword());
+        String username = trainee.getUser().getUsername();
+        String rawPassword = trainee.getUser().getRawPassword();
+        String token = jwtService.generateToken(username);
+        trainee.getUser().setRawPassword(null);
+
+        RegistrationResponse response = new RegistrationResponse(username, rawPassword, token);
 
         gymMetrics.traineeRegistered();
-        log.info("Trainee registered successfully, username={}", response.getUsername());
+        log.info("Trainee registered successfully, username={} (JWT issued)", username);
         return ResponseEntity.status(HttpStatus.OK).body(response);
     }
 
     /**
      * 5. Get Trainee Profile (GET)
-     * Request: username (path). Password query param required for authentication (assignment note 3).
+     * Request: username (path). Requires JWT Bearer authentication.
      * Response: profile fields + trainers list
      */
     @ApiOperation(
             value = "Get Trainee Profile",
-            notes = "Returns trainee profile. Requires matching username/password (authentication).",
+            notes = "Returns trainee profile. Requires JWT Bearer authentication.",
             response = TraineeProfileResponse.class
     )
     @ApiResponses({
@@ -115,17 +121,11 @@ public class TraineeController {
     })
     @GetMapping("/{username}")
     public ResponseEntity<TraineeProfileResponse> getProfile(
-            @ApiParam(value = "Trainee username", required = true) @PathVariable("username") String username,
-            @ApiParam(value = "Password (authentication)", required = true) @RequestParam("password") String password) {
+            @ApiParam(value = "Trainee username", required = true) @PathVariable("username") String username) {
 
         log.info("GET /trainees/{}", username);
 
-        String user = RequestValidation.requireUsername(username);
-        String pass = RequestValidation.requirePassword(password);
-        if (!gymFacade.matchTraineeCredentials(user, pass)) {
-            log.warn("Unauthorized get trainee profile for username={}", user);
-            throw new UnauthorizedException("Unauthorized");
-        }
+        String user = SecurityUtils.requireSelf(RequestValidation.requireUsername(username));
 
         Trainee trainee = gymFacade.selectTraineeByUsername(user);
         return ResponseEntity.ok(toProfileResponse(trainee));
@@ -138,7 +138,7 @@ public class TraineeController {
      */
     @ApiOperation(
             value = "Update Trainee Profile",
-            notes = "Updates trainee profile. Username cannot be changed. Requires authentication.",
+            notes = "Updates trainee profile. Username cannot be changed. Requires JWT Bearer authentication.",
             response = TraineeProfileResponse.class
     )
     @ApiResponses({
@@ -150,19 +150,13 @@ public class TraineeController {
     @PutMapping("/{username}")
     public ResponseEntity<TraineeProfileResponse> updateProfile(
             @ApiParam(value = "Trainee username", required = true) @PathVariable("username") String username,
-            @ApiParam(value = "Password (authentication)", required = true) @RequestParam("password") String password,
             @ApiParam(value = "Updated trainee profile fields", required = true)
             @RequestBody UpdateTraineeProfileRequest request) {
 
         log.info("PUT /trainees/{}", username);
 
         RequestValidation.requireNonNull(request, "Request body");
-        String user = RequestValidation.requireUsername(username);
-        String pass = RequestValidation.requirePassword(password);
-        if (!gymFacade.matchTraineeCredentials(user, pass)) {
-            log.warn("Unauthorized update trainee profile for username={}", user);
-            throw new UnauthorizedException("Unauthorized");
-        }
+        String user = SecurityUtils.requireSelf(RequestValidation.requireUsername(username));
         RequestValidation.requireSameUsername(user, request.getUsername());
         RequestValidation.requireNonBlank(request.getFirstName(), "First name");
         RequestValidation.requireNonBlank(request.getLastName(), "Last name");
@@ -188,7 +182,7 @@ public class TraineeController {
      */
     @ApiOperation(
             value = "Delete Trainee Profile",
-            notes = "Hard-deletes trainee profile and cascades training deletion. Requires authentication.",
+            notes = "Hard-deletes trainee profile and cascades training deletion. Requires JWT Bearer authentication.",
             response = Void.class
     )
     @ApiResponses({
@@ -199,17 +193,11 @@ public class TraineeController {
     })
     @DeleteMapping("/{username}")
     public ResponseEntity<Void> deleteProfile(
-            @ApiParam(value = "Trainee username", required = true) @PathVariable("username") String username,
-            @ApiParam(value = "Password (authentication)", required = true) @RequestParam("password") String password) {
+            @ApiParam(value = "Trainee username", required = true) @PathVariable("username") String username) {
 
         log.info("DELETE /trainees/{}", username);
 
-        String user = RequestValidation.requireUsername(username);
-        String pass = RequestValidation.requirePassword(password);
-        if (!gymFacade.matchTraineeCredentials(user, pass)) {
-            log.warn("Unauthorized delete trainee profile for username={}", user);
-            throw new UnauthorizedException("Unauthorized");
-        }
+        String user = SecurityUtils.requireSelf(RequestValidation.requireUsername(username));
 
         gymFacade.deleteTraineeByUsername(user);
         log.info("Trainee deleted: {}", user);
@@ -221,7 +209,7 @@ public class TraineeController {
      */
     @ApiOperation(
             value = "Get not assigned active trainers",
-            notes = "Returns active trainers that are not assigned to this trainee. Requires authentication.",
+            notes = "Returns active trainers that are not assigned to this trainee. Requires JWT Bearer authentication.",
             response = TrainerShortDto.class,
             responseContainer = "List"
     )
@@ -233,17 +221,11 @@ public class TraineeController {
     })
     @GetMapping("/{username}/trainers/not-assigned")
     public ResponseEntity<List<TrainerShortDto>> getNotAssignedActiveTrainers(
-            @ApiParam(value = "Trainee username", required = true) @PathVariable("username") String username,
-            @ApiParam(value = "Password (authentication)", required = true) @RequestParam("password") String password) {
+            @ApiParam(value = "Trainee username", required = true) @PathVariable("username") String username) {
 
         log.info("GET /trainees/{}/trainers/not-assigned", username);
 
-        String user = RequestValidation.requireUsername(username);
-        String pass = RequestValidation.requirePassword(password);
-        if (!gymFacade.matchTraineeCredentials(user, pass)) {
-            log.warn("Unauthorized get not-assigned trainers for username={}", user);
-            throw new UnauthorizedException("Unauthorized");
-        }
+        String user = SecurityUtils.requireSelf(RequestValidation.requireUsername(username));
 
         List<TrainerShortDto> trainers = new ArrayList<>();
         for (Trainer trainer : gymFacade.getTrainersNotAssignedToTrainee(user)) {
@@ -266,7 +248,7 @@ public class TraineeController {
      */
     @ApiOperation(
             value = "Update Trainee's Trainer List",
-            notes = "Replaces the trainee's assigned trainers. Requires authentication.",
+            notes = "Replaces the trainee's assigned trainers. Requires JWT Bearer authentication.",
             response = TrainerShortDto.class,
             responseContainer = "List"
     )
@@ -279,19 +261,13 @@ public class TraineeController {
     @PutMapping("/{username}/trainers")
     public ResponseEntity<List<TrainerShortDto>> updateTrainersList(
             @ApiParam(value = "Trainee username", required = true) @PathVariable("username") String username,
-            @ApiParam(value = "Password (authentication)", required = true) @RequestParam("password") String password,
             @ApiParam(value = "Updated list of trainer usernames", required = true)
             @RequestBody UpdateTraineeTrainersRequest request) {
 
         log.info("PUT /trainees/{}/trainers", username);
 
         RequestValidation.requireNonNull(request, "Request body");
-        String user = RequestValidation.requireUsername(username);
-        String pass = RequestValidation.requirePassword(password);
-        if (!gymFacade.matchTraineeCredentials(user, pass)) {
-            log.warn("Unauthorized update trainers list for username={}", user);
-            throw new UnauthorizedException("Unauthorized");
-        }
+        String user = SecurityUtils.requireSelf(RequestValidation.requireUsername(username));
         RequestValidation.requireSameUsername(user, request.getTraineeUsername());
         RequestValidation.requireNonNull(request.getTrainersList(), "Trainers list");
 
@@ -314,7 +290,7 @@ public class TraineeController {
      */
     @ApiOperation(
             value = "Get Trainee Trainings List",
-            notes = "Returns trainee trainings. Optional filters: periodFrom, periodTo, trainerName, trainingType. Requires authentication.",
+            notes = "Returns trainee trainings. Optional filters: periodFrom, periodTo, trainerName, trainingType. Requires JWT Bearer authentication.",
             response = TrainingListItemDto.class,
             responseContainer = "List"
     )
@@ -327,7 +303,6 @@ public class TraineeController {
     @GetMapping("/{username}/trainings")
     public ResponseEntity<List<TrainingListItemDto>> getTrainings(
             @ApiParam(value = "Trainee username", required = true) @PathVariable("username") String username,
-            @ApiParam(value = "Password (authentication)", required = true) @RequestParam("password") String password,
             @ApiParam(value = "Period From (optional)") @RequestParam(value = "periodFrom", required = false)
             @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate periodFrom,
             @ApiParam(value = "Period To (optional)") @RequestParam(value = "periodTo", required = false)
@@ -338,12 +313,7 @@ public class TraineeController {
         log.info("GET /trainees/{}/trainings from={}, to={}, trainerName={}, trainingType={}",
                 username, periodFrom, periodTo, trainerName, trainingType);
 
-        String user = RequestValidation.requireUsername(username);
-        String pass = RequestValidation.requirePassword(password);
-        if (!gymFacade.matchTraineeCredentials(user, pass)) {
-            log.warn("Unauthorized get trainings for username={}", user);
-            throw new UnauthorizedException("Unauthorized");
-        }
+        String user = SecurityUtils.requireSelf(RequestValidation.requireUsername(username));
         RequestValidation.requirePeriodOrder(periodFrom, periodTo);
 
         List<TrainingListItemDto> result = new ArrayList<>();
@@ -359,7 +329,7 @@ public class TraineeController {
      */
     @ApiOperation(
             value = "Activate / De-Activate Trainee",
-            notes = "Sets trainee active status. Fails if already in the requested state. Requires authentication.",
+            notes = "Sets trainee active status. Fails if already in the requested state. Requires JWT Bearer authentication.",
             response = Void.class
     )
     @ApiResponses({
@@ -371,19 +341,13 @@ public class TraineeController {
     @PatchMapping("/{username}")
     public ResponseEntity<Void> setActive(
             @ApiParam(value = "Trainee username", required = true) @PathVariable("username") String username,
-            @ApiParam(value = "Password (authentication)", required = true) @RequestParam("password") String password,
             @ApiParam(value = "Activate/deactivate request with username and isActive flag", required = true)
             @RequestBody ActivateRequest request) {
 
         log.info("PATCH /trainees/{} isActive={}", username, request != null ? request.getIsActive() : null);
 
         RequestValidation.requireNonNull(request, "Request body");
-        String user = RequestValidation.requireUsername(username);
-        String pass = RequestValidation.requirePassword(password);
-        if (!gymFacade.matchTraineeCredentials(user, pass)) {
-            log.warn("Unauthorized activate/deactivate for trainee username={}", user);
-            throw new UnauthorizedException("Unauthorized");
-        }
+        String user = SecurityUtils.requireSelf(RequestValidation.requireUsername(username));
         RequestValidation.requireSameUsername(user, request.getUsername());
         RequestValidation.requireNonNull(request.getIsActive(), "Is Active");
 
