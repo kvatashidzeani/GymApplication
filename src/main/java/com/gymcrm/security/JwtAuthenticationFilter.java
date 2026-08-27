@@ -60,20 +60,20 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             String jti = jwtService.extractJti(token);
             if (tokenBlacklist.isBlacklisted(jti)) {
                 log.warn("Rejected blacklisted JWT jti={}", jti);
-                filterChain.doFilter(request, response);
-                return;
-            }
+            } else {
+                JwtTokenHolder.set(token);
 
-            String username = jwtService.extractUsername(token);
-            if (username != null && SecurityContextHolder.getContext().getAuthentication() == null) {
-                UserDetails userDetails = userDetailsService.loadUserByUsername(username);
-                if (jwtService.isTokenValid(token, userDetails)) {
-                    UsernamePasswordAuthenticationToken authentication =
-                            new UsernamePasswordAuthenticationToken(
-                                    userDetails, null, userDetails.getAuthorities());
-                    authentication.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
-                    SecurityContextHolder.getContext().setAuthentication(authentication);
-                    log.debug("JWT authenticated username={}", username);
+                String username = jwtService.extractUsername(token);
+                if (username != null && SecurityContextHolder.getContext().getAuthentication() == null) {
+                    UserDetails userDetails = userDetailsService.loadUserByUsername(username);
+                    if (jwtService.isTokenValid(token, userDetails)) {
+                        UsernamePasswordAuthenticationToken authentication =
+                                new UsernamePasswordAuthenticationToken(
+                                        userDetails, null, userDetails.getAuthorities());
+                        authentication.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
+                        SecurityContextHolder.getContext().setAuthentication(authentication);
+                        log.debug("JWT authenticated username={}", username);
+                    }
                 }
             }
         } catch (ExpiredJwtException ex) {
@@ -82,6 +82,10 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             log.warn("Invalid JWT: {}", ex.getMessage());
         }
 
-        filterChain.doFilter(request, response);
+        try {
+            filterChain.doFilter(request, response);
+        } finally {
+            JwtTokenHolder.clear();
+        }
     }
 }

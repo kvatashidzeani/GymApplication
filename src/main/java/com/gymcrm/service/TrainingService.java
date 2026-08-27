@@ -1,8 +1,10 @@
 package com.gymcrm.service;
 
+import com.gymcrm.client.WorkloadClient;
 import com.gymcrm.exceptions.TrainingNotFoundException;
 import com.gymcrm.Util.IdGenerator;
 import com.gymcrm.dao.TrainingDao;
+import com.gymcrm.model.Trainer;
 import com.gymcrm.model.Training;
 import com.gymcrm.model.TrainingType;
 import com.gymcrm.storage.TrainingTypeStorage;
@@ -28,6 +30,7 @@ public class TrainingService {
     private TraineeService traineeService;
     private TrainerService trainerService;
     private TrainingTypeStorage trainingTypeStorage;
+    private WorkloadClient workloadClient;
 
     @Autowired
     public void setTrainingValidator(TrainingValidator trainingValidator){
@@ -56,6 +59,11 @@ public class TrainingService {
     @Autowired
     public void setTrainingTypeStorage(TrainingTypeStorage trainingTypeStorage) {
         this.trainingTypeStorage = trainingTypeStorage;
+    }
+
+    @Autowired
+    public void setWorkloadClient(WorkloadClient workloadClient) {
+        this.workloadClient = workloadClient;
     }
 
     @PostConstruct
@@ -91,7 +99,22 @@ public class TrainingService {
         Training savedTraining = trainingDao.save(training);
         log.info("Successfully created Training with ID: {}", savedTraining.getId());
 
+        notifyWorkloadAdded(savedTraining);
+
         return savedTraining;
+    }
+
+    private void notifyWorkloadAdded(Training training) {
+        if (workloadClient == null || training == null || training.getTrainerId() == null) {
+            return;
+        }
+        try {
+            Trainer trainer = trainerService.selectTrainer(training.getTrainerId());
+            workloadClient.notifyTrainingAdded(trainer, training);
+        } catch (RuntimeException ex) {
+            log.error("Workload ADD notification failed for training id={}: {}",
+                    training.getId(), ex.getMessage());
+        }
     }
 
     /**

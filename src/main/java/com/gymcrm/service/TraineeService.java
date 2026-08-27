@@ -1,8 +1,16 @@
 package com.gymcrm.service;
 
+import com.gymcrm.client.WorkloadClient;
+import com.gymcrm.exceptions.TraineeNotFoundException;
+import com.gymcrm.exceptions.TrainerNotFoundException;
+import com.gymcrm.Util.IdGenerator;
+import com.gymcrm.Util.PasswordGenerator;
+import com.gymcrm.Util.UsernameGenerator;
+import com.gymcrm.dao.TrainingDao;
+import com.gymcrm.dao.UserDao;
+import com.gymcrm.dao.impl.TraineeDaoImpl;
+import com.gymcrm.dao.impl.TrainerDaoImpl;
 import com.gymcrm.model.Trainee;
-<<<<<<< Updated upstream
-=======
 import com.gymcrm.model.Trainer;
 import com.gymcrm.model.Training;
 import com.gymcrm.model.User;
@@ -13,20 +21,11 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
->>>>>>> Stashed changes
 
+import jakarta.annotation.PostConstruct;
+import java.time.LocalDate;
+import java.util.HashSet;
 import java.util.List;
-<<<<<<< Updated upstream
-import java.util.Optional;
-
-public interface TraineeService {
-    Trainee createTrainee(Trainee trainee);
-    Trainee updateTrainee(Trainee trainee);
-    void deleteTrainee(Long id);
-    Optional<Trainee> selectTrainee(Long id);
-    List<Trainee> selectAllTrainees();
-}
-=======
 import java.util.Locale;
 import java.util.Set;
 import java.util.stream.Collectors;
@@ -44,6 +43,7 @@ public class TraineeService {
     private IdGenerator idGenerator;
     private TraineeValidator traineeValidator;
     private PasswordEncoder passwordEncoder;
+    private WorkloadClient workloadClient;
 
     @Autowired
     public void setIdGenerator(IdGenerator idGenerator) {
@@ -69,6 +69,11 @@ public class TraineeService {
     @Autowired
     public void setTrainingDao(TrainingDao trainingDao) {
         this.trainingDao = trainingDao;
+    }
+
+    @Autowired
+    public void setWorkloadClient(WorkloadClient workloadClient) {
+        this.workloadClient = workloadClient;
     }
 
     @PostConstruct
@@ -250,7 +255,10 @@ public class TraineeService {
         unlinkTraineeFromAllTrainers(trainee);
 
         List<Training> trainings = trainingDao.findByTraineeId(id);
-        trainings.forEach(training -> trainingDao.delete(training.getId()));
+        trainings.forEach(training -> {
+            notifyWorkloadDeleted(training);
+            trainingDao.delete(training.getId());
+        });
         log.info("Cascade-deleted {} training(s) for trainee id={}", trainings.size(), id);
 
         traineeDao.delete(id);
@@ -259,6 +267,24 @@ public class TraineeService {
         }
         log.info("Hard-deleted trainee id={}, userId={}, cascade trainings={}",
                 id, userId, trainings.size());
+    }
+
+    private void notifyWorkloadDeleted(Training training) {
+        if (workloadClient == null || training == null || training.getTrainerId() == null) {
+            return;
+        }
+        try {
+            Trainer trainer = trainerDao.findById(training.getTrainerId()).orElse(null);
+            if (trainer == null) {
+                log.warn("Skip workload DELETE: trainer id={} not found for training id={}",
+                        training.getTrainerId(), training.getId());
+                return;
+            }
+            workloadClient.notifyTrainingDeleted(trainer, training);
+        } catch (RuntimeException ex) {
+            log.error("Workload DELETE notification failed for training id={}: {}",
+                    training.getId(), ex.getMessage());
+        }
     }
 
     /**
@@ -586,4 +612,3 @@ public class TraineeService {
         }
     }
 }
->>>>>>> Stashed changes

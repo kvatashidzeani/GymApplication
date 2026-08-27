@@ -53,6 +53,34 @@ public class JwtService {
                 .compact();
     }
 
+    /**
+     * Service-to-service JWT for calling the trainer-workload microservice.
+     * Claim {@code typ=service} identifies the caller as Gym CRM (not an end user).
+     */
+    public String generateServiceToken() {
+        Date now = new Date();
+        Date expiry = new Date(now.getTime() + expirationMs);
+        return Jwts.builder()
+                .id(UUID.randomUUID().toString())
+                .subject("gym-crm")
+                .claim("typ", "service")
+                .issuedAt(now)
+                .expiration(expiry)
+                .signWith(secretKey)
+                .compact();
+    }
+
+    /** Returns true if the token signature is valid and it is not expired. */
+    public boolean isTokenSignatureValid(String token) {
+        try {
+            return !isTokenExpired(token);
+        } catch (ExpiredJwtException | MalformedJwtException | UnsupportedJwtException
+                 | SecurityException | IllegalArgumentException ex) {
+            log.debug("JWT signature/expiry check failed: {}", ex.getMessage());
+            return false;
+        }
+    }
+
     public String extractUsername(String token) {
         return parseClaims(token).getSubject();
     }

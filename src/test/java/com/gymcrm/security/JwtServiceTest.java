@@ -45,4 +45,11 @@ class JwtServiceTest {
 
         assertFalse(jwtService.isTokenValid(token, user));
     }
+
+    @Test
+    void generateServiceToken_isValidSignature() {
+        String token = jwtService.generateServiceToken();
+        assertEquals("gym-crm", jwtService.extractUsername(token));
+        assertTrue(jwtService.isTokenSignatureValid(token));
+    }
 }

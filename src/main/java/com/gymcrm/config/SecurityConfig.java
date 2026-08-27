@@ -76,6 +76,7 @@ public class SecurityConfig {
                                 "/v3/api-docs",
                                 "/webjars/**"
                         ).permitAll()
+                        .requestMatchers("/actuator/health", "/actuator/health/**", "/actuator/info").permitAll()
                         .anyRequest().authenticated())
                 .httpBasic(AbstractHttpConfigurer::disable)
                 .formLogin(AbstractHttpConfigurer::disable)

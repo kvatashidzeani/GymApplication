@@ -1,0 +1,33 @@
+### Workload ADD (training planned) — expect 200
+POST http://localhost:8082/workload
+Content-Type: application/json
+
+{
+  "trainerUsername": "Mike.Brown",
+  "trainerFirstName": "Mike",
+  "trainerLastName": "Brown",
+  "isActive": true,
+  "trainingDate": "2026-03-15",
+  "trainingDuration": 60,
+  "actionType": "ADD"
+}
+
+### Workload DELETE (training cancelled) — expect 200
+POST http://localhost:8082/workload
+Content-Type: application/json
+
+{
+  "trainerUsername": "Mike.Brown",
+  "trainerFirstName": "Mike",
+  "trainerLastName": "Brown",
+  "isActive": true,
+  "trainingDate": "2026-03-15",
+  "trainingDuration": 60,
+  "actionType": "DELETE"
+}
+
+### Get month hours — expect 200
+GET http://localhost:8082/workload/Mike.Brown/2026/3
+
+### Health
+GET http://localhost:8082/actuator/health

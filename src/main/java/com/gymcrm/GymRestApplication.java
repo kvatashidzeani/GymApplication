@@ -5,6 +5,7 @@ import org.slf4j.LoggerFactory;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.boot.context.event.ApplicationReadyEvent;
+import org.springframework.cloud.client.discovery.EnableDiscoveryClient;
 import org.springframework.context.event.EventListener;
 import org.springframework.core.env.Environment;
 
@@ -15,6 +16,7 @@ import org.springframework.core.env.Environment;
  * Swagger UI: {@code http://localhost:8081/swagger-ui.html}
  */
 @SpringBootApplication
+@EnableDiscoveryClient
 public class GymRestApplication {
 
     private static final Logger log = LoggerFactory.getLogger(GymRestApplication.class);

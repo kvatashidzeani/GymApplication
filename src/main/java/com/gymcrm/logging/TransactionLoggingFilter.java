@@ -18,22 +18,18 @@ import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 
 /**
- * Two-level logging for every REST call:
- * <ol>
- *   <li>Transaction level — assigns / propagates {@code transactionId} (MDC + response header)</li>
- *   <li>REST call details — endpoint, request payload, status and response message</li>
- * </ol>
- * Registered automatically by Spring Boot as a servlet {@link Filter} bean.
+ * Transaction-level logging for every REST call:
+ * <ul>
+ *   <li>Generates or reuses {@code transactionId} (MDC + {@code X-Transaction-Id} header)</li>
+ *   <li>Logs endpoint, request payload, HTTP status, and response message</li>
+ *   <li>Same id correlates operation-level logs and is forwarded to downstream services</li>
+ * </ul>
  */
 @Component
 @Order(1)
 public class TransactionLoggingFilter implements Filter {
 
-    /** Transaction-level logger (correlated via MDC transactionId). */
     private static final Logger TX_LOG = LoggerFactory.getLogger("com.gymcrm.logging.Transaction");
-
-    /** REST call detail logger. */
-    private static final Logger REST_LOG = LoggerFactory.getLogger("com.gymcrm.logging.RestCall");
 
     private static final int MAX_BODY_LOG_CHARS = 2000;
 
@@ -61,8 +57,9 @@ public class TransactionLoggingFilter implements Filter {
 
         wrappedResponse.setHeader(TransactionContext.HEADER, transactionId);
 
+        String endpoint = wrappedRequest.getMethod() + " " + wrappedRequest.getRequestURI();
         long started = System.currentTimeMillis();
-        TX_LOG.info("Transaction started transactionId={}", transactionId);
+        TX_LOG.info("Transaction started transactionId={} endpoint={}", transactionId, endpoint);
 
         try {
             chain.doFilter(wrappedRequest, wrappedResponse);
@@ -74,27 +71,13 @@ public class TransactionLoggingFilter implements Filter {
             long durationMs = System.currentTimeMillis() - started;
 
             if (status >= 400) {
-                REST_LOG.warn(
-                        "REST call endpoint={} {} request={} status={} responseMessage={} durationMs={}",
-                        wrappedRequest.getMethod(),
-                        wrappedRequest.getRequestURI(),
-                        requestSummary,
-                        status,
-                        responseMessage,
-                        durationMs);
-                TX_LOG.warn("Transaction finished transactionId={} status={} durationMs={}",
-                        transactionId, status, durationMs);
+                TX_LOG.warn(
+                        "Transaction finished transactionId={} endpoint={} request={} status={} responseMessage={} durationMs={}",
+                        transactionId, endpoint, requestSummary, status, responseMessage, durationMs);
             } else {
-                REST_LOG.info(
-                        "REST call endpoint={} {} request={} status={} responseMessage={} durationMs={}",
-                        wrappedRequest.getMethod(),
-                        wrappedRequest.getRequestURI(),
-                        requestSummary,
-                        status,
-                        responseMessage,
-                        durationMs);
-                TX_LOG.info("Transaction finished transactionId={} status={} durationMs={}",
-                        transactionId, status, durationMs);
+                TX_LOG.info(
+                        "Transaction finished transactionId={} endpoint={} request={} status={} responseMessage={} durationMs={}",
+                        transactionId, endpoint, requestSummary, status, responseMessage, durationMs);
             }
 
             wrappedResponse.copyBodyToResponse();
@@ -106,7 +89,8 @@ public class TransactionLoggingFilter implements Filter {
         String path = request.getRequestURI();
         return path != null && (path.startsWith("/webjars/")
                 || path.equals("/swagger-ui.html")
-                || path.startsWith("/swagger-ui"));
+                || path.startsWith("/swagger-ui")
+                || path.startsWith("/actuator/"));
     }
 
     private static String buildRequestSummary(ContentCachingRequestWrapper request) {
@@ -152,7 +136,6 @@ public class TransactionLoggingFilter implements Filter {
         return value.substring(0, MAX_BODY_LOG_CHARS) + "...(truncated)";
     }
 
-    /** Minimal status text without depending on Spring HttpStatus in the filter helper. */
     private static final class HttpStatusText {
         static String of(int status) {
             return switch (status) {
@@ -161,6 +144,7 @@ public class TransactionLoggingFilter implements Filter {
                 case 404 -> "Not Found";
                 case 405 -> "Method Not Allowed";
                 case 415 -> "Unsupported Media Type";
+                case 429 -> "Too Many Requests";
                 case 500 -> "Internal Server Error";
                 default -> "HTTP " + status;
             };
