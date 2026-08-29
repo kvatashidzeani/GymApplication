@@ -82,7 +82,9 @@ public class TrainingController {
             if (!authorized) {
                 log.warn("Unauthorized add training for authUser={}, trainee={}, trainer={}",
                         authUsername, traineeUsername, trainerUsername);
-                throw new UnauthorizedException("Unauthorized");
+                throw new UnauthorizedException(
+                        "JWT user '" + authUsername + "' must match traineeUsername or trainerUsername "
+                                + "(got trainee='" + traineeUsername + "', trainer='" + trainerUsername + "')");
             }
 
             Trainer trainer = gymFacade.selectTrainerByUsername(trainerUsername);

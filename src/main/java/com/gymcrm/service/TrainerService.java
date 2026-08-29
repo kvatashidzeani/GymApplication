@@ -1,8 +1,15 @@
 package com.gymcrm.service;
 
+import com.gymcrm.exceptions.TrainerNotFoundException;
+import com.gymcrm.Util.IdGenerator;
+import com.gymcrm.Util.PasswordGenerator;
+import com.gymcrm.Util.UsernameGenerator;
+import com.gymcrm.dao.TraineeDao;
+import com.gymcrm.dao.TrainerDao;
+import com.gymcrm.dao.TrainingDao;
+import com.gymcrm.dao.UserDao;
+import com.gymcrm.model.Trainee;
 import com.gymcrm.model.Trainer;
-<<<<<<< Updated upstream
-=======
 import com.gymcrm.model.Training;
 import com.gymcrm.model.TrainingType;
 import com.gymcrm.model.User;
@@ -13,19 +20,13 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
->>>>>>> Stashed changes
 
+import jakarta.annotation.PostConstruct;
+import java.time.LocalDate;
 import java.util.List;
-import java.util.Optional;
+import java.util.Locale;
+import java.util.stream.Collectors;
 
-<<<<<<< Updated upstream
-public interface TrainerService {
-    Trainer createTrainer(Trainer trainer);
-    Trainer updateTrainer(Trainer trainer);
-    Optional<Trainer> selectTrainer(Long id);
-    List<Trainer> selectAllTrainers();
-}
-=======
 @Service
 public class TrainerService {
     private static final Logger log = LoggerFactory.getLogger(TrainerService.class);
@@ -398,4 +399,3 @@ public class TrainerService {
         }
     }
 }
->>>>>>> Stashed changes

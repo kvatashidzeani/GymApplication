@@ -1,6 +1,4 @@
 package com.gymcrm.model;
-<<<<<<< Updated upstream
-=======
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
@@ -18,16 +16,24 @@ import java.sql.Types;
  */
 @Entity
 @Table(name = "\"user\"")
->>>>>>> Stashed changes
 public class User {
 
+    @Id
+    @Column(name = "id")
+    @JdbcTypeCode(Types.INTEGER)
+    private Long userId;
+
+    @Column(name = "first_name", nullable = false, length = 100)
     private String firstName;
+
+    @Column(name = "last_name", nullable = false, length = 100)
     private String lastName;
+
+    @Column(nullable = false, unique = true, length = 100)
     private String username;
+
+    @Column(nullable = false, length = 255)
     private String password;
-<<<<<<< Updated upstream
-    private boolean isActive;
-=======
 
     @Column(name = "is_active", nullable = false)
     private boolean isActive = true;
@@ -46,17 +52,25 @@ public class User {
     /** Inverse side of Trainer → User (child owns FK user_id). */
     @OneToOne(mappedBy = "user")
     private Trainer trainer;
->>>>>>> Stashed changes
 
     public User() {}
 
     public User(String firstName, String lastName, String username, String password, boolean isActive) {
+        this(firstName, lastName, username, password, isActive, null);
+    }
+
+    public User(String firstName, String lastName, String username, String password,
+                boolean isActive, Long userId) {
         this.firstName = firstName;
         this.lastName = lastName;
         this.username = username;
         this.password = password;
         this.isActive = isActive;
+        this.userId = userId;
     }
+
+    public Long getUserId() { return userId; }
+    public void setUserId(Long userId) { this.userId = userId; }
 
     public String getFirstName() { return firstName; }
     public void setFirstName(String firstName) { this.firstName = firstName; }
@@ -76,9 +90,15 @@ public class User {
     public boolean isActive() { return isActive; }
     public void setActive(boolean active) { isActive = active; }
 
+    public Trainee getTrainee() { return trainee; }
+    public void setTrainee(Trainee trainee) { this.trainee = trainee; }
+
+    public Trainer getTrainer() { return trainer; }
+    public void setTrainer(Trainer trainer) { this.trainer = trainer; }
+
     @Override
     public String toString() {
-        return "com.gymcrm.model.User{firstName='" + firstName + "', lastName='" + lastName +
-                "', username='" + username + "', isActive=" + isActive + "}";
+        return "com.gymcrm.model.User{userId=" + userId + ", firstName='" + firstName +
+                "', lastName='" + lastName + "', username='" + username + "', isActive=" + isActive + "}";
     }
 }

@@ -1,23 +1,24 @@
 package com.gymcrm.client;
 
 import com.gymcrm.logging.TransactionContext;
+import com.gymcrm.messaging.WorkloadMessaging;
 import com.gymcrm.model.Trainer;
 import com.gymcrm.model.Training;
 import com.gymcrm.model.TrainingType;
 import com.gymcrm.model.User;
 import com.gymcrm.security.JwtTokenHolder;
 import com.gymcrm.security.ServiceJwtProvider;
+import jakarta.jms.JMSException;
+import jakarta.jms.Message;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.cloud.client.circuitbreaker.CircuitBreaker;
 import org.springframework.cloud.client.circuitbreaker.CircuitBreakerFactory;
-import org.springframework.http.HttpEntity;
-import org.springframework.http.HttpHeaders;
-import org.springframework.http.HttpStatus;
-import org.springframework.http.ResponseEntity;
-import org.springframework.web.client.RestClientException;
-import org.springframework.web.client.RestTemplate;
+import org.springframework.jms.JmsException;
+import org.springframework.jms.core.JmsTemplate;
+import org.springframework.jms.core.MessagePostProcessor;
 
 import java.time.LocalDate;
 import java.util.function.Function;
@@ -28,15 +29,18 @@ import static org.mockito.Mockito.*;
 
 class WorkloadClientTest {
 
-    private RestTemplate restTemplate;
-    private CircuitBreakerFactory<?, ?> circuitBreakerFactory;
+    private static final String QUEUE = WorkloadMessaging.QUEUE;
+
+    private JmsTemplate jmsTemplate;
+    @SuppressWarnings("rawtypes")
+    private CircuitBreakerFactory circuitBreakerFactory;
     private CircuitBreaker circuitBreaker;
     private ServiceJwtProvider serviceJwtProvider;
     private WorkloadClient client;
 
     @BeforeEach
     void setUp() {
-        restTemplate = mock(RestTemplate.class);
+        jmsTemplate = mock(JmsTemplate.class);
         circuitBreakerFactory = mock(CircuitBreakerFactory.class);
         circuitBreaker = mock(CircuitBreaker.class);
         serviceJwtProvider = mock(ServiceJwtProvider.class);
@@ -53,8 +57,11 @@ class WorkloadClientTest {
         });
 
         client = new WorkloadClient(
-                restTemplate, circuitBreakerFactory, serviceJwtProvider, true, false,
-                "trainer-workload-service", "http://localhost:8082");
+                providerOf(jmsTemplate),
+                providerOf(circuitBreakerFactory),
+                providerOf(serviceJwtProvider),
+                true,
+                QUEUE);
     }
 
     @AfterEach
@@ -64,107 +71,99 @@ class WorkloadClientTest {
     }
 
     @Test
-    void notifyTrainingAdded_sendsBearerServiceToken() {
-        when(restTemplate.postForEntity(anyString(), any(HttpEntity.class), eq(Void.class)))
-                .thenReturn(new ResponseEntity<>(HttpStatus.OK));
-
+    void notifyTrainingAdded_sendsBearerServiceToken() throws JMSException {
         client.notifyTrainingAdded(
                 trainer("Mike.Brown", "Mike", "Brown", true),
                 training(LocalDate.of(2026, 3, 15), 60));
 
-        verify(restTemplate).postForEntity(
-                eq("http://localhost:8082/workload"),
-                argThat((HttpEntity<?> entity) -> {
-                    HttpHeaders headers = entity.getHeaders();
-                    return "Bearer service-jwt-token".equals(headers.getFirst(HttpHeaders.AUTHORIZATION));
-                }),
-                eq(Void.class));
+        MessagePostProcessor processor = capturePostProcessor();
+        Message message = mock(Message.class);
+        processor.postProcessMessage(message);
+        verify(message).setStringProperty(WorkloadMessaging.AUTHORIZATION_HEADER, "Bearer service-jwt-token");
+        verify(jmsTemplate).convertAndSend(eq(QUEUE), any(WorkloadUpdateRequest.class), any(MessagePostProcessor.class));
     }
 
     @Test
-    void notifyTrainingAdded_propagatesTransactionIdHeader() {
+    void notifyTrainingAdded_propagatesTransactionIdHeader() throws JMSException {
         TransactionContext.set("tx-from-gym-crm");
-        when(restTemplate.postForEntity(anyString(), any(HttpEntity.class), eq(Void.class)))
-                .thenReturn(new ResponseEntity<>(HttpStatus.OK));
 
         client.notifyTrainingAdded(
                 trainer("Mike.Brown", "Mike", "Brown", true),
                 training(LocalDate.of(2026, 3, 15), 60));
 
-        verify(restTemplate).postForEntity(
-                eq("http://localhost:8082/workload"),
-                argThat((HttpEntity<?> entity) ->
-                        "tx-from-gym-crm".equals(entity.getHeaders().getFirst(TransactionContext.HEADER))),
-                eq(Void.class));
+        MessagePostProcessor processor = capturePostProcessor();
+        Message message = mock(Message.class);
+        processor.postProcessMessage(message);
+        verify(message).setStringProperty(WorkloadMessaging.TRANSACTION_ID_HEADER, "tx-from-gym-crm");
     }
 
     @Test
-    void notifyTrainingAdded_forwardsUserBearerTokenWhenPresent() {
+    void notifyTrainingAdded_forwardsUserBearerTokenWhenPresent() throws JMSException {
         JwtTokenHolder.set("user-jwt-token");
-        when(restTemplate.postForEntity(anyString(), any(HttpEntity.class), eq(Void.class)))
-                .thenReturn(new ResponseEntity<>(HttpStatus.OK));
 
         client.notifyTrainingAdded(
                 trainer("Mike.Brown", "Mike", "Brown", true),
                 training(LocalDate.of(2026, 3, 15), 60));
 
-        verify(restTemplate).postForEntity(
-                eq("http://localhost:8082/workload"),
-                argThat((HttpEntity<?> entity) ->
-                        "Bearer user-jwt-token".equals(entity.getHeaders().getFirst(HttpHeaders.AUTHORIZATION))),
-                eq(Void.class));
+        MessagePostProcessor processor = capturePostProcessor();
+        Message message = mock(Message.class);
+        processor.postProcessMessage(message);
+        verify(message).setStringProperty(WorkloadMessaging.AUTHORIZATION_HEADER, "Bearer user-jwt-token");
         verify(serviceJwtProvider, never()).getToken();
     }
 
     @Test
-    void notifyTrainingAdded_usesServiceDiscoveryUrl() {
-        WorkloadClient discoveryClient = new WorkloadClient(
-                restTemplate, circuitBreakerFactory, serviceJwtProvider, true, true,
-                "trainer-workload-service", "http://localhost:8082");
-        when(restTemplate.postForEntity(anyString(), any(HttpEntity.class), eq(Void.class)))
-                .thenReturn(new ResponseEntity<>(HttpStatus.OK));
+    void notifyTrainingAdded_publishesToConfiguredQueue() {
+        WorkloadClient customQueueClient = new WorkloadClient(
+                providerOf(jmsTemplate),
+                providerOf(circuitBreakerFactory),
+                providerOf(serviceJwtProvider),
+                true,
+                "custom.workload.queue");
 
-        discoveryClient.notifyTrainingAdded(
+        customQueueClient.notifyTrainingAdded(
                 trainer("Mike.Brown", "Mike", "Brown", true),
                 training(LocalDate.of(2026, 3, 15), 60));
 
-        verify(restTemplate).postForEntity(
-                eq("http://trainer-workload-service/workload"),
-                any(HttpEntity.class),
-                eq(Void.class));
+        verify(jmsTemplate).convertAndSend(
+                eq("custom.workload.queue"),
+                any(WorkloadUpdateRequest.class),
+                any(MessagePostProcessor.class));
     }
 
     @Test
-    void notifyTrainingDeleted_postsDeleteAction() {
-        when(restTemplate.postForEntity(anyString(), any(HttpEntity.class), eq(Void.class)))
-                .thenReturn(new ResponseEntity<>(HttpStatus.OK));
-
+    void notifyTrainingDeleted_publishesDeleteAction() {
         client.notifyTrainingDeleted(
                 trainer("Mike.Brown", "Mike", "Brown", true),
                 training(LocalDate.of(2026, 3, 15), 60));
 
-        verify(restTemplate).postForEntity(
-                eq("http://localhost:8082/workload"),
-                any(HttpEntity.class),
-                eq(Void.class));
+        verify(jmsTemplate).convertAndSend(
+                eq(QUEUE),
+                argThat((WorkloadUpdateRequest request) ->
+                        request.getActionType() == WorkloadActionType.DELETE),
+                any(MessagePostProcessor.class));
     }
 
     @Test
-    void whenDisabled_doesNotCallRemote() {
+    void whenDisabled_doesNotPublish() {
         WorkloadClient disabled = new WorkloadClient(
-                restTemplate, circuitBreakerFactory, serviceJwtProvider, false, false,
-                "trainer-workload-service", "http://localhost:8082");
+                providerOf(jmsTemplate),
+                providerOf(circuitBreakerFactory),
+                providerOf(serviceJwtProvider),
+                false,
+                QUEUE);
         disabled.notifyTrainingAdded(
                 trainer("Mike.Brown", "Mike", "Brown", true),
                 training(LocalDate.of(2026, 3, 15), 60));
-        verifyNoInteractions(restTemplate);
+        verifyNoInteractions(jmsTemplate);
         verifyNoInteractions(circuitBreakerFactory);
     }
 
     @Test
-    void remoteFailure_usesCircuitBreakerFallback() {
-        when(restTemplate.postForEntity(anyString(), any(HttpEntity.class), eq(Void.class)))
-                .thenThrow(new RestClientException("connection refused"));
+    void publishFailure_usesCircuitBreakerFallback() {
+        doThrow(new JmsException("broker unavailable") {})
+                .when(jmsTemplate)
+                .convertAndSend(anyString(), any(), any(MessagePostProcessor.class));
 
         client.notifyTrainingAdded(
                 trainer("Mike.Brown", "Mike", "Brown", true),
@@ -184,7 +183,20 @@ class WorkloadClientTest {
                 trainer("Mike.Brown", "Mike", "Brown", true),
                 training(LocalDate.of(2026, 3, 15), 60));
 
-        verify(restTemplate, never()).postForEntity(anyString(), any(), any());
+        verify(jmsTemplate, never()).convertAndSend(anyString(), any(), any(MessagePostProcessor.class));
+    }
+
+    @SuppressWarnings("unchecked")
+    private static <T> ObjectProvider<T> providerOf(T value) {
+        ObjectProvider<T> provider = mock(ObjectProvider.class);
+        when(provider.getIfAvailable()).thenReturn(value);
+        return provider;
+    }
+
+    private MessagePostProcessor capturePostProcessor() {
+        var captor = org.mockito.ArgumentCaptor.forClass(MessagePostProcessor.class);
+        verify(jmsTemplate).convertAndSend(eq(QUEUE), any(WorkloadUpdateRequest.class), captor.capture());
+        return captor.getValue();
     }
 
     private static Trainer trainer(String username, String first, String last, boolean active) {

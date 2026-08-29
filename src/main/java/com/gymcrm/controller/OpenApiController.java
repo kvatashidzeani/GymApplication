@@ -527,21 +527,14 @@ public class OpenApiController {
         op.put("summary", "Update Trainee's Trainer List");
         op.put("description",
                 "Replaces the trainee's assigned trainers list. "
-                        + "Password query param is required for authentication.");
+                        + "Requires JWT Bearer auth as the trainee (Authorize button).");
         op.put("parameters", List.of(
                 Map.of(
                         "name", "username",
                         "in", "path",
                         "required", true,
                         "schema", Map.of("type", "string"),
-                        "example", "Ani.Smith"
-                ),
-                Map.of(
-                        "name", "password",
-                        "in", "query",
-                        "required", true,
-                        "schema", Map.of("type", "string"),
-                        "example", "aB3dE6gH"
+                        "example", "John.Doe"
                 )
         ));
         op.put("requestBody", Map.of(
@@ -863,24 +856,10 @@ public class OpenApiController {
         op.put("summary", "Add Training");
         op.put("description",
                 "Creates a training session. Training type is taken from the trainer's specialization. "
-                        + "Requires username and password of the trainee or trainer involved. "
+                        + "Requires JWT Bearer auth as the trainee or trainer in the request body "
+                        + "(use Authorize with token from register/login). "
                         + "Training update and delete are not supported via REST.");
-        op.put("parameters", List.of(
-                Map.of(
-                        "name", "username",
-                        "in", "query",
-                        "required", true,
-                        "schema", Map.of("type", "string"),
-                        "example", "John.Doe"
-                ),
-                Map.of(
-                        "name", "password",
-                        "in", "query",
-                        "required", true,
-                        "schema", Map.of("type", "string"),
-                        "example", "aB3dE6gH"
-                )
-        ));
+        op.put("parameters", List.of());
         op.put("requestBody", Map.of(
                 "required", true,
                 "content", Map.of(

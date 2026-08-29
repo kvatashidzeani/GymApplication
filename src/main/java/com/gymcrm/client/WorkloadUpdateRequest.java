@@ -5,7 +5,7 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 import java.time.LocalDate;
 
 /**
- * Payload matching trainer-workload-service {@code POST /workload}.
+ * Payload published to ActiveMQ for trainer-workload-service consumption.
  */
 public class WorkloadUpdateRequest {
 

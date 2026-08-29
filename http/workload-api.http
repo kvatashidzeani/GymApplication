@@ -1,0 +1,17 @@
+### Workload service read API (updates come via ActiveMQ from Gym CRM)
+@workloadHost = http://localhost:8082
+@jwt = PASTE_JWT_FROM_GYM_CRM_REGISTER_OR_LOGIN
+
+### Usage hint
+GET {{workloadHost}}/workload
+
+### Get month hours — expect trainingSummaryDuration after Gym CRM creates a training
+GET {{workloadHost}}/workload/Mike.Brown/2026/8
+Authorization: Bearer {{jwt}}
+
+### Get nested summary
+GET {{workloadHost}}/workload/Mike.Brown
+Authorization: Bearer {{jwt}}
+
+### Health
+GET {{workloadHost}}/actuator/health

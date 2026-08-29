@@ -1,0 +1,104 @@
+### ActiveMQ end-to-end demo (IntelliJ HTTP Client)
+### Prerequisites: ActiveMQ :61616, WorkloadApplication :8082, GymRestApplication :8081
+### IMPORTANT: Seed data already has John.Doe and Mike.Brown — demo uses Amy.Coach / Sam.Member instead.
+### Run requests top-to-bottom. Tokens/passwords are saved automatically between steps.
+###
+### Quick links (browser, no auth unless noted):
+###   Gym CRM Swagger:  http://localhost:8081/docs
+###   Gym CRM health:   http://localhost:8081/actuator/health
+###   Workload health:  http://localhost:8082/actuator/health
+###   ActiveMQ console: http://127.0.0.1:8161/admin  (admin / admin)
+###
+### No IntelliJ license? Run: http\run-activemq-demo.bat
+
+@host = http://localhost:8081
+@workloadHost = http://localhost:8082
+
+### 0) Health checks (optional)
+GET {{workloadHost}}/actuator/health
+
+###
+GET {{host}}/actuator/health
+
+### 1) Register trainer (NOT Mike.Brown — that name already exists in seed data)
+POST {{host}}/trainers/register
+Content-Type: application/json
+
+{
+  "firstName": "Amy",
+  "lastName": "Coach",
+  "specialization": "Cardio"
+}
+
+> {%
+    client.global.set("trainer_username", response.body.username);
+    client.global.set("trainer_password", response.body.password);
+    client.global.set("trainer_password_encoded", encodeURIComponent(response.body.password));
+    client.global.set("trainer_token", response.body.token);
+    client.log("trainer_username=" + response.body.username);
+    client.log("trainer_password=" + response.body.password);
+%}
+
+### 2) Register trainee (NOT John.Doe — that name already exists in seed data)
+POST {{host}}/trainees/register
+Content-Type: application/json
+
+{
+  "firstName": "Sam",
+  "lastName": "Member",
+  "dateOfBirth": "1998-05-12",
+  "address": "Tbilisi"
+}
+
+> {%
+    client.global.set("trainee_username", response.body.username);
+    client.global.set("trainee_password", response.body.password);
+    client.global.set("trainee_password_encoded", encodeURIComponent(response.body.password));
+    client.global.set("trainee_token", response.body.token);
+    client.log("trainee_username=" + response.body.username);
+    client.log("trainee_password=" + response.body.password);
+%}
+
+### 3) Assign trainer to trainee — use {{trainee_username}} / {{trainer_username}} from steps 1-2
+PUT {{host}}/trainees/{{trainee_username}}/trainers
+Authorization: Bearer {{trainee_token}}
+Content-Type: application/json
+
+{
+  "traineeUsername": "{{trainee_username}}",
+  "trainersList": [
+    { "username": "{{trainer_username}}" }
+  ]
+}
+
+### 4) Add training — usernames MUST match variables from steps 1-2 (not hardcoded John.Doe)
+POST {{host}}/trainings
+Authorization: Bearer {{trainee_token}}
+Content-Type: application/json
+
+{
+  "traineeUsername": "{{trainee_username}}",
+  "trainerUsername": "{{trainer_username}}",
+  "trainingName": "Morning Cardio",
+  "trainingDate": "2026-08-29",
+  "trainingDuration": 60
+}
+
+### 5) Verify workload (async - wait 1-2 sec if needed)
+GET {{workloadHost}}/workload/{{trainer_username}}/2026/8
+Authorization: Bearer {{trainer_token}}
+
+> {%
+    client.log("trainingSummaryDuration=" + response.body.trainingSummaryDuration);
+%}
+
+### 6) Full trainer workload summary
+GET {{workloadHost}}/workload/{{trainer_username}}
+Authorization: Bearer {{trainer_token}}
+
+### 7) Optional: login again with saved password
+GET {{host}}/login?username={{trainee_username}}&password={{trainee_password_encoded}}
+
+> {%
+    client.global.set("trainee_token", response.body.token);
+%}

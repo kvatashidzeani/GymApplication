@@ -1,16 +1,12 @@
 package com.gymcrm.workload.controller;
 
 import com.gymcrm.workload.dto.TrainerWorkloadResponse;
-import com.gymcrm.workload.dto.WorkloadUpdateRequest;
 import com.gymcrm.workload.service.WorkloadService;
-import jakarta.validation.Valid;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
@@ -18,7 +14,8 @@ import org.springframework.web.bind.annotation.RestController;
 import java.util.Map;
 
 /**
- * REST API for trainer monthly workload.
+ * REST API for reading trainer monthly workload.
+ * Updates are received asynchronously via ActiveMQ ({@code workload.events.queue}).
  */
 @RestController
 @RequestMapping("/workload")
@@ -33,40 +30,17 @@ public class WorkloadController {
     }
 
     /**
-     * Browser-friendly hint. Workload updates must be sent as POST with JSON body.
+     * Browser-friendly hint. Workload updates are published to ActiveMQ by Gym CRM.
      */
     @GetMapping
     public ResponseEntity<Map<String, Object>> workloadUsage() {
         return ResponseEntity.ok(Map.of(
-                "message", "Use POST /workload with JSON body to send trainer workload (ADD/DELETE).",
-                "example", Map.of(
-                        "trainerUsername", "Mike.Brown",
-                        "trainerFirstName", "Mike",
-                        "trainerLastName", "Brown",
-                        "isActive", true,
-                        "trainingDate", "2026-03-15",
-                        "trainingDuration", 60,
-                        "actionType", "ADD"
+                "message", "Workload updates are consumed asynchronously from ActiveMQ queue 'workload.events.queue'.",
+                "readEndpoints", Map.of(
+                        "trainerSummary", "GET /workload/{trainerUsername}",
+                        "monthHours", "GET /workload/{trainerUsername}/{year}/{month}"
                 )
         ));
-    }
-
-    /**
-     * Accepts trainer workload when a training is planned or cancelled.
-     * <p>
-     * Contract — Request: trainerUsername, trainerFirstName, trainerLastName,
-     * isActive, trainingDate, trainingDuration, actionType (ADD/DELETE).
-     * Response: {@code 200 OK}.
-     */
-    @PostMapping
-    public ResponseEntity<Void> updateWorkload(@Valid @RequestBody WorkloadUpdateRequest request) {
-        log.info("POST /workload trainer={} action={} date={} duration={}",
-                request.getTrainerUsername(),
-                request.getActionType(),
-                request.getTrainingDate(),
-                request.getTrainingDuration());
-        workloadService.applyTrainingEvent(request);
-        return ResponseEntity.ok().build();
     }
 
     /**
