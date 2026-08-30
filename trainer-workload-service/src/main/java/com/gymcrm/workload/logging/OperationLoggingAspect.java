@@ -11,19 +11,22 @@ import org.springframework.stereotype.Component;
 import java.util.Arrays;
 import java.util.stream.Collectors;
 
+/**
+ * Operation-level logging for service methods.
+ * All messages share the current {@code transactionId} via {@link TransactionContext} / MDC.
+ */
 @Aspect
 @Component
 public class OperationLoggingAspect {
 
     private static final Logger OP_LOG = LoggerFactory.getLogger("com.gymcrm.workload.logging.Operation");
+    private static final int MAX_ARG_CHARS = 500;
 
     @Around("execution(* com.gymcrm.workload.service..*(..))")
     public Object logOperation(ProceedingJoinPoint joinPoint) throws Throwable {
         MethodSignature signature = (MethodSignature) joinPoint.getSignature();
         String operation = signature.getDeclaringType().getSimpleName() + "." + signature.getName();
-        String args = Arrays.stream(joinPoint.getArgs())
-                .map(String::valueOf)
-                .collect(Collectors.joining(", ", "(", ")"));
+        String args = summarizeArgs(joinPoint.getArgs());
         String txId = TransactionContext.get();
 
         OP_LOG.info("Operation started transactionId={} operation={} args={}", txId, operation, args);
@@ -38,5 +41,31 @@ public class OperationLoggingAspect {
                     txId, operation, ex.getMessage(), System.currentTimeMillis() - started);
             throw ex;
         }
+    }
+
+    private static String summarizeArgs(Object[] args) {
+        if (args == null || args.length == 0) {
+            return "()";
+        }
+        String joined = Arrays.stream(args)
+                .map(OperationLoggingAspect::safeArg)
+                .collect(Collectors.joining(", "));
+        if (joined.length() > MAX_ARG_CHARS) {
+            return "(" + joined.substring(0, MAX_ARG_CHARS) + "...(truncated))";
+        }
+        return "(" + joined + ")";
+    }
+
+    private static String safeArg(Object arg) {
+        if (arg == null) {
+            return "null";
+        }
+        String text = String.valueOf(arg);
+        String lower = text.toLowerCase();
+        if (lower.contains("password") || lower.contains("authorization")
+                || arg.getClass().getSimpleName().toLowerCase().contains("password")) {
+            return "***";
+        }
+        return text;
     }
 }

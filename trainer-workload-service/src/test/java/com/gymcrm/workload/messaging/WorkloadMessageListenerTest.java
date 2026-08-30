@@ -2,6 +2,7 @@ package com.gymcrm.workload.messaging;
 
 import com.gymcrm.workload.dto.ActionType;
 import com.gymcrm.workload.dto.WorkloadUpdateRequest;
+import com.gymcrm.workload.logging.JmsTransactionLogging;
 import com.gymcrm.workload.logging.TransactionContext;
 import com.gymcrm.workload.security.WorkloadJwtService;
 import com.gymcrm.workload.service.WorkloadService;
@@ -11,7 +12,9 @@ import org.junit.jupiter.api.Test;
 
 import java.time.LocalDate;
 import java.util.List;
+import java.util.concurrent.atomic.AtomicReference;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
@@ -32,7 +35,7 @@ class WorkloadMessageListenerTest {
         messageValidator = mock(WorkloadMessageValidator.class);
         deadLetterPublisher = mock(WorkloadDeadLetterPublisher.class);
         listener = new WorkloadMessageListener(
-                workloadService, jwtService, messageValidator, deadLetterPublisher);
+                workloadService, jwtService, messageValidator, deadLetterPublisher, new JmsTransactionLogging());
     }
 
     @AfterEach
@@ -45,11 +48,18 @@ class WorkloadMessageListenerTest {
         when(jwtService.isTokenValid("valid-token")).thenReturn(true);
         WorkloadUpdateRequest request = sampleRequest(ActionType.ADD);
         when(messageValidator.validate(request)).thenReturn(List.of());
+        AtomicReference<String> txDuringService = new AtomicReference<>();
+
+        doAnswer(inv -> {
+            txDuringService.set(TransactionContext.get());
+            return null;
+        }).when(workloadService).applyTrainingEvent(request);
 
         listener.onWorkloadEvent(request, "tx-123", "Bearer valid-token");
 
         verify(workloadService).applyTrainingEvent(request);
         verify(deadLetterPublisher, never()).publish(any(), any(), any(), any());
+        assertEquals("tx-123", txDuringService.get());
         assertNull(TransactionContext.get());
     }
 
@@ -67,6 +77,7 @@ class WorkloadMessageListenerTest {
                 eq("Bearer valid-token"));
         verify(workloadService, never()).applyTrainingEvent(any());
         verify(jwtService, never()).isTokenValid(any());
+        assertNull(TransactionContext.get());
     }
 
     @Test
@@ -82,6 +93,7 @@ class WorkloadMessageListenerTest {
                 eq("tx-123"),
                 isNull());
         verify(workloadService, never()).applyTrainingEvent(any());
+        assertNull(TransactionContext.get());
     }
 
     @Test
@@ -98,6 +110,7 @@ class WorkloadMessageListenerTest {
                 isNull(),
                 eq("Bearer bad-token"));
         verify(workloadService, never()).applyTrainingEvent(any());
+        assertNull(TransactionContext.get());
     }
 
     private static WorkloadUpdateRequest sampleRequest(ActionType actionType) {

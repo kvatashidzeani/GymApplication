@@ -4,14 +4,14 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
- * Response / view of in-memory trainer workload structure.
+ * Response / view of trainer workload structure stored in MongoDB.
  */
 public class TrainerWorkloadResponse {
 
     private String trainerUsername;
     private String trainerFirstName;
     private String trainerLastName;
-    private boolean trainerStatus;
+    private Boolean trainerStatus;
     private List<YearWorkloadDto> years = new ArrayList<>();
 
     public String getTrainerUsername() {
@@ -38,11 +38,11 @@ public class TrainerWorkloadResponse {
         this.trainerLastName = trainerLastName;
     }
 
-    public boolean isTrainerStatus() {
+    public Boolean getTrainerStatus() {
         return trainerStatus;
     }
 
-    public void setTrainerStatus(boolean trainerStatus) {
+    public void setTrainerStatus(Boolean trainerStatus) {
         this.trainerStatus = trainerStatus;
     }
 
@@ -77,7 +77,7 @@ public class TrainerWorkloadResponse {
 
     public static class MonthWorkloadDto {
         private int month;
-        private int trainingSummaryDuration;
+        private Integer trainingSummaryDuration;
 
         public int getMonth() {
             return month;
@@ -87,11 +87,11 @@ public class TrainerWorkloadResponse {
             this.month = month;
         }
 
-        public int getTrainingSummaryDuration() {
+        public Integer getTrainingSummaryDuration() {
             return trainingSummaryDuration;
         }
 
-        public void setTrainingSummaryDuration(int trainingSummaryDuration) {
+        public void setTrainingSummaryDuration(Integer trainingSummaryDuration) {
             this.trainingSummaryDuration = trainingSummaryDuration;
         }
     }

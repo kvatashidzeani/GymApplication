@@ -1,15 +1,20 @@
 package com.gymcrm.workload.model;
 
+import org.springframework.data.mongodb.core.mapping.Field;
+
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 
 /**
- * One calendar year with a list of monthly summaries.
+ * Embedded year document: calendar year with monthly training summaries.
  */
 public class YearWorkload {
 
+    @Field("year")
     private int year;
+
+    @Field("months")
     private List<MonthWorkload> months = new ArrayList<>();
 
     public YearWorkload() {
@@ -36,7 +41,7 @@ public class YearWorkload {
     }
 
     public Optional<MonthWorkload> findMonth(int month) {
-        return months.stream().filter(m -> m.getMonth() == month).findFirst();
+        return months.stream().filter(m -> m.getMonth() != null && m.getMonth() == month).findFirst();
     }
 
     public MonthWorkload getOrCreateMonth(int month) {
@@ -49,6 +54,8 @@ public class YearWorkload {
     }
 
     public void removeMonthIfEmpty(int month) {
-        months.removeIf(m -> m.getMonth() == month && m.getTrainingSummaryDuration() <= 0);
+        months.removeIf(m -> m.getMonth() != null
+                && m.getMonth() == month
+                && (m.getTrainingSummaryDuration() == null || m.getTrainingSummaryDuration() <= 0));
     }
 }

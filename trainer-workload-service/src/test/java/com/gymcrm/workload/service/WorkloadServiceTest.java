@@ -17,7 +17,9 @@ class WorkloadServiceTest {
 
     @BeforeEach
     void setUp() {
-        service = new WorkloadService(new InMemoryWorkloadStorage());
+        InMemoryWorkloadStorage storage = new InMemoryWorkloadStorage();
+        TrainerWorkloadEventService eventService = new TrainerWorkloadEventService(storage);
+        service = new WorkloadService(storage, eventService);
     }
 
     @Test
@@ -30,7 +32,7 @@ class WorkloadServiceTest {
         assertEquals("Mike.Brown", response.getTrainerUsername());
         assertEquals("Mike", response.getTrainerFirstName());
         assertEquals("Brown", response.getTrainerLastName());
-        assertTrue(response.isTrainerStatus());
+        assertEquals(Boolean.TRUE, response.getTrainerStatus());
         assertEquals(1, response.getYears().size());
         assertEquals(2026, response.getYears().get(0).getYear());
         assertEquals(1, response.getYears().get(0).getMonths().size());

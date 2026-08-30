@@ -1,14 +1,11 @@
 package com.gymcrm.workload.service;
 
-import com.gymcrm.workload.dto.ActionType;
 import com.gymcrm.workload.dto.TrainerWorkloadResponse;
 import com.gymcrm.workload.dto.WorkloadUpdateRequest;
 import com.gymcrm.workload.model.MonthWorkload;
 import com.gymcrm.workload.model.TrainerWorkload;
 import com.gymcrm.workload.model.YearWorkload;
-import com.gymcrm.workload.storage.InMemoryWorkloadStorage;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import com.gymcrm.workload.storage.WorkloadStorage;
 import org.springframework.stereotype.Service;
 
 import java.util.ArrayList;
@@ -16,67 +13,29 @@ import java.util.List;
 import java.util.stream.Collectors;
 
 /**
- * Calculates and stores trainer monthly training summaries in the nested in-memory structure:
+ * Calculates and stores trainer monthly training summaries in MongoDB:
  * Trainer → Years → Months → trainingSummaryDuration.
  */
 @Service
 public class WorkloadService {
 
-    private static final Logger log = LoggerFactory.getLogger(WorkloadService.class);
+    private final WorkloadStorage storage;
+    private final TrainerWorkloadEventService eventService;
 
-    private final InMemoryWorkloadStorage storage;
-
-    public WorkloadService(InMemoryWorkloadStorage storage) {
+    public WorkloadService(WorkloadStorage storage, TrainerWorkloadEventService eventService) {
         this.storage = storage;
+        this.eventService = eventService;
     }
 
     /**
-     * Applies training planned (ADD) or cancelled (DELETE) to the monthly summary.
+     * Delegates ADD/DELETE workload events to {@link TrainerWorkloadEventService}.
      */
     public void applyTrainingEvent(WorkloadUpdateRequest request) {
-        String username = request.getTrainerUsername().trim();
-        int year = request.getTrainingDate().getYear();
-        int month = request.getTrainingDate().getMonthValue();
-        int duration = request.getTrainingDuration();
-
-        TrainerWorkload trainer = storage.findByUsername(username)
-                .orElseGet(() -> new TrainerWorkload(
-                        username,
-                        request.getTrainerFirstName().trim(),
-                        request.getTrainerLastName().trim(),
-                        Boolean.TRUE.equals(request.getIsActive())));
-
-        trainer.setTrainerFirstName(request.getTrainerFirstName().trim());
-        trainer.setTrainerLastName(request.getTrainerLastName().trim());
-        trainer.setTrainerStatus(Boolean.TRUE.equals(request.getIsActive()));
-
-        YearWorkload yearWorkload = trainer.getOrCreateYear(year);
-        MonthWorkload monthWorkload = yearWorkload.getOrCreateMonth(month);
-
-        if (request.getActionType() == ActionType.ADD) {
-            monthWorkload.setTrainingSummaryDuration(
-                    monthWorkload.getTrainingSummaryDuration() + duration);
-            log.info("ADD {} min → trainer={} year={} month={} total={}",
-                    duration, username, year, month, monthWorkload.getTrainingSummaryDuration());
-        } else {
-            int updated = Math.max(0, monthWorkload.getTrainingSummaryDuration() - duration);
-            monthWorkload.setTrainingSummaryDuration(updated);
-            log.info("DELETE {} min → trainer={} year={} month={} total={}",
-                    duration, username, year, month, updated);
-            yearWorkload.removeMonthIfEmpty(month);
-            trainer.removeYearIfEmpty(year);
-        }
-
-        if (trainer.getYears().isEmpty() && request.getActionType() == ActionType.DELETE) {
-            storage.delete(username);
-            log.info("Removed empty trainer workload username={}", username);
-        } else {
-            storage.save(trainer);
-        }
+        eventService.processEvent(request);
     }
 
     /**
-     * Returns the nested in-memory summary for a trainer (optionally filtered by year/month).
+     * Returns the nested summary for a trainer (optionally filtered by year/month).
      */
     public TrainerWorkloadResponse getWorkload(String trainerUsername, Integer year, Integer month) {
         TrainerWorkload trainer = storage.findByUsername(trainerUsername.trim())
@@ -91,6 +50,7 @@ public class WorkloadService {
                 .flatMap(t -> t.findYear(year))
                 .flatMap(y -> y.findMonth(month))
                 .map(MonthWorkload::getTrainingSummaryDuration)
+                .map(duration -> duration != null ? duration : 0)
                 .orElse(0);
     }
 
@@ -101,7 +61,7 @@ public class WorkloadService {
         response.setTrainerUsername(trainer.getTrainerUsername());
         response.setTrainerFirstName(trainer.getTrainerFirstName());
         response.setTrainerLastName(trainer.getTrainerLastName());
-        response.setTrainerStatus(trainer.isTrainerStatus());
+        response.setTrainerStatus(trainer.getTrainerStatus());
 
         List<YearWorkload> years = trainer.getYears();
         if (yearFilter != null) {

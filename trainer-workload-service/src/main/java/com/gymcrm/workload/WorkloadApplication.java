@@ -7,7 +7,7 @@ import org.springframework.cloud.client.discovery.EnableDiscoveryClient;
 
 /**
  * Trainer Workload microservice.
- * Stores nested in-memory summaries: Trainer → Years → Months → duration.
+ * Persists nested training summaries in MongoDB: Trainer → Years → Months → duration.
  * Registers with Eureka Discovery Service.
  * <p>
  * Excludes default user/password auto-config — auth is JWT Bearer only.

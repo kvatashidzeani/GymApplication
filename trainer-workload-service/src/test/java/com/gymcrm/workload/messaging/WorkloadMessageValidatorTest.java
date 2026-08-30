@@ -46,9 +46,75 @@ class WorkloadMessageValidatorTest {
     }
 
     @Test
+    void validate_missingTrainerFirstName_returnsError() {
+        WorkloadUpdateRequest request = sampleRequest();
+        request.setTrainerFirstName("");
+
+        List<String> errors = validator.validate(request);
+
+        assertEquals(1, errors.size());
+        assertTrue(errors.get(0).contains("trainerFirstName"));
+    }
+
+    @Test
+    void validate_missingTrainerLastName_returnsError() {
+        WorkloadUpdateRequest request = sampleRequest();
+        request.setTrainerLastName(null);
+
+        List<String> errors = validator.validate(request);
+
+        assertEquals(1, errors.size());
+        assertTrue(errors.get(0).contains("trainerLastName"));
+    }
+
+    @Test
+    void validate_missingIsActive_returnsError() {
+        WorkloadUpdateRequest request = sampleRequest();
+        request.setIsActive(null);
+
+        List<String> errors = validator.validate(request);
+
+        assertEquals(1, errors.size());
+        assertTrue(errors.get(0).contains("isActive"));
+    }
+
+    @Test
+    void validate_missingTrainingDate_returnsError() {
+        WorkloadUpdateRequest request = sampleRequest();
+        request.setTrainingDate(null);
+
+        List<String> errors = validator.validate(request);
+
+        assertEquals(1, errors.size());
+        assertTrue(errors.get(0).contains("trainingDate"));
+    }
+
+    @Test
+    void validate_missingActionType_returnsError() {
+        WorkloadUpdateRequest request = sampleRequest();
+        request.setActionType(null);
+
+        List<String> errors = validator.validate(request);
+
+        assertEquals(1, errors.size());
+        assertTrue(errors.get(0).contains("actionType"));
+    }
+
+    @Test
     void validate_missingDuration_returnsError() {
         WorkloadUpdateRequest request = sampleRequest();
         request.setTrainingDuration(null);
+
+        List<String> errors = validator.validate(request);
+
+        assertEquals(1, errors.size());
+        assertTrue(errors.get(0).contains("trainingDuration"));
+    }
+
+    @Test
+    void validate_nonPositiveDuration_returnsError() {
+        WorkloadUpdateRequest request = sampleRequest();
+        request.setTrainingDuration(0);
 
         List<String> errors = validator.validate(request);
 

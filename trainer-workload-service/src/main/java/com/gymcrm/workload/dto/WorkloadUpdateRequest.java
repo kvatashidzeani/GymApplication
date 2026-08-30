@@ -9,39 +9,30 @@ import java.time.LocalDate;
 
 /**
  * Request contract for trainer workload update (training planned / cancelled).
- * <ol>
- *   <li>Trainer Username</li>
- *   <li>Trainer First Name</li>
- *   <li>Trainer Last Name</li>
- *   <li>IsActive</li>
- *   <li>Training date</li>
- *   <li>Training duration</li>
- *   <li>Action Type (ADD/DELETE)</li>
- * </ol>
  */
 public class WorkloadUpdateRequest {
 
-    @NotBlank
+    @NotBlank(message = "Trainer Username is required")
     private String trainerUsername;
 
-    @NotBlank
+    @NotBlank(message = "Trainer First Name is required")
     private String trainerFirstName;
 
-    @NotBlank
+    @NotBlank(message = "Trainer Last Name is required")
     private String trainerLastName;
 
-    @NotNull
+    @NotNull(message = "Is Active is required")
     @JsonProperty("isActive")
     private Boolean isActive;
 
-    @NotNull
+    @NotNull(message = "Training date is required")
     private LocalDate trainingDate;
 
-    @NotNull
-    @Min(1)
+    @NotNull(message = "Training duration is required")
+    @Min(value = 1, message = "Training duration must be greater than 0")
     private Integer trainingDuration;
 
-    @NotNull
+    @NotNull(message = "Action Type is required")
     private ActionType actionType;
 
     public String getTrainerUsername() {
