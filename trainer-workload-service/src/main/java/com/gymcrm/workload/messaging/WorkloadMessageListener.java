@@ -6,6 +6,7 @@ import com.gymcrm.workload.security.WorkloadJwtService;
 import com.gymcrm.workload.service.WorkloadService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.context.annotation.Profile;
 import org.springframework.jms.annotation.JmsListener;
 import org.springframework.messaging.handler.annotation.Header;
 import org.springframework.messaging.handler.annotation.Payload;
@@ -19,6 +20,7 @@ import java.util.stream.Collectors;
  * Invalid messages (missing required fields or auth) are forwarded to the DLQ.
  */
 @Component
+@Profile("!component-test")
 public class WorkloadMessageListener {
 
     private static final Logger log = LoggerFactory.getLogger(WorkloadMessageListener.class);

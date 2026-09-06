@@ -1,6 +1,7 @@
 package com.gymcrm.workload.repository;
 
 import com.gymcrm.workload.model.TrainerWorkload;
+import org.springframework.context.annotation.Profile;
 import org.springframework.data.mongodb.core.FindAndReplaceOptions;
 import org.springframework.data.mongodb.core.MongoTemplate;
 import org.springframework.data.mongodb.core.query.Criteria;
@@ -11,6 +12,7 @@ import org.springframework.stereotype.Repository;
  * MongoTemplate-backed update implementation for {@link TrainerWorkloadRepository}.
  */
 @Repository
+@Profile("!component-test")
 public class TrainerWorkloadRepositoryImpl implements TrainerWorkloadRepositoryCustom {
 
     private final MongoTemplate mongoTemplate;

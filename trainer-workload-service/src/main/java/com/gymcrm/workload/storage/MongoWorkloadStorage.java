@@ -2,6 +2,7 @@ package com.gymcrm.workload.storage;
 
 import com.gymcrm.workload.model.TrainerWorkload;
 import com.gymcrm.workload.repository.TrainerWorkloadRepository;
+import org.springframework.context.annotation.Profile;
 import org.springframework.stereotype.Component;
 
 import java.util.Optional;
@@ -10,6 +11,7 @@ import java.util.Optional;
  * MongoDB-backed workload storage using {@link TrainerWorkloadRepository}.
  */
 @Component
+@Profile("!component-test")
 public class MongoWorkloadStorage implements WorkloadStorage {
 
     private final TrainerWorkloadRepository repository;

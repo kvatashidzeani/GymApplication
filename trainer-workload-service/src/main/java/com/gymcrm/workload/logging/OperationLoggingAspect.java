@@ -16,7 +16,7 @@ import java.util.stream.Collectors;
  * All messages share the current {@code transactionId} via {@link TransactionContext} / MDC.
  */
 @Aspect
-@Component
+@Component("workloadOperationLoggingAspect")
 public class OperationLoggingAspect {
 
     private static final Logger OP_LOG = LoggerFactory.getLogger("com.gymcrm.workload.logging.Operation");

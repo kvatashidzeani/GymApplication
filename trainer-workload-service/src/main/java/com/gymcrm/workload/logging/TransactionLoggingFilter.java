@@ -20,7 +20,7 @@ import java.nio.charset.StandardCharsets;
 /**
  * Transaction-level logging. Reuses {@code X-Transaction-Id} from Gym CRM when present.
  */
-@Component
+@Component("workloadTransactionLoggingFilter")
 @Order(1)
 public class TransactionLoggingFilter implements Filter {
 
