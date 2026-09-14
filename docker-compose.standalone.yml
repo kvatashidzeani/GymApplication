@@ -1,0 +1,26 @@
+# Standalone Docker (SubTask 1): integrations disabled — profile "docker"
+# Prefer: docker compose -f docker-compose.standalone.yml up -d --build
+services:
+  gym-crm:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: gym-crm:docker
+    container_name: gym-crm
+    ports:
+      - "8081:8081"
+    environment:
+      SPRING_PROFILES_ACTIVE: docker
+      JWT_SECRET: GymCrmJwtSecretKey-ChangeMe-AtLeast32CharsLong!
+
+  trainer-workload-service:
+    build:
+      context: ./trainer-workload-service
+      dockerfile: Dockerfile
+    image: trainer-workload-service:docker
+    container_name: trainer-workload-service
+    ports:
+      - "8082:8082"
+    environment:
+      SPRING_PROFILES_ACTIVE: docker
+      JWT_SECRET: GymCrmJwtSecretKey-ChangeMe-AtLeast32CharsLong!

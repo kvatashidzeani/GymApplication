@@ -1,0 +1,124 @@
+# SubTask 2: shared Docker network with Postgres, MongoDB, ActiveMQ, Eureka
+# Run: docker compose up -d --build
+
+networks:
+  gym-net:
+    driver: bridge
+    name: gym-net
+
+volumes:
+  postgres-data:
+  mongo-data:
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: gym-postgres
+    networks: [gym-net]
+    environment:
+      POSTGRES_DB: gymapplication
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    ports:
+      - "5433:5432"
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d gymapplication"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+  mongo:
+    image: mongo:7
+    container_name: gym-mongo
+    networks: [gym-net]
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongo-data:/data/db
+    healthcheck:
+      test: ["CMD", "mongosh", "--eval", "db.adminCommand('ping')"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+  activemq:
+    image: symptoma/activemq:5.18.3
+    container_name: gym-activemq
+    networks: [gym-net]
+    ports:
+      - "61616:61616"
+      - "8161:8161"
+
+  eureka-server:
+    build:
+      context: ./eureka-server
+      dockerfile: Dockerfile
+    image: eureka-server:docker
+    container_name: eureka-server
+    networks: [gym-net]
+    ports:
+      - "8761:8761"
+    # Eureka has no actuator by default; wait for HTTP listener
+    healthcheck:
+      test: ["CMD-SHELL", "timeout 2 bash -c '</dev/tcp/127.0.0.1/8761' || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 20
+      start_period: 50s
+
+  gym-crm:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: gym-crm:docker
+    container_name: gym-crm
+    networks: [gym-net]
+    ports:
+      - "8081:8081"
+    environment:
+      SPRING_PROFILES_ACTIVE: docker-integrated
+      JWT_SECRET: GymCrmJwtSecretKey-ChangeMe-AtLeast32CharsLong!
+      DB_URL: jdbc:postgresql://postgres:5432/gymapplication
+      DB_USERNAME: postgres
+      DB_PASSWORD: postgres
+      ACTIVEMQ_BROKER_URL: tcp://activemq:61616
+      ACTIVEMQ_USER: admin
+      ACTIVEMQ_PASSWORD: admin
+      EUREKA_SERVER: http://eureka-server:8761/eureka/
+      WORKLOAD_ENABLED: "true"
+      WORKLOAD_MESSAGING_ENABLED: "true"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      activemq:
+        condition: service_started
+      eureka-server:
+        condition: service_healthy
+
+  trainer-workload-service:
+    build:
+      context: ./trainer-workload-service
+      dockerfile: Dockerfile
+    image: trainer-workload-service:docker
+    container_name: trainer-workload-service
+    networks: [gym-net]
+    ports:
+      - "8082:8082"
+    environment:
+      SPRING_PROFILES_ACTIVE: docker-integrated
+      JWT_SECRET: GymCrmJwtSecretKey-ChangeMe-AtLeast32CharsLong!
+      MONGODB_URI: mongodb://mongo:27017/gym_workload
+      MONGODB_DATABASE: gym_workload
+      ACTIVEMQ_BROKER_URL: tcp://activemq:61616
+      ACTIVEMQ_USER: admin
+      ACTIVEMQ_PASSWORD: admin
+      EUREKA_SERVER: http://eureka-server:8761/eureka/
+    depends_on:
+      mongo:
+        condition: service_healthy
+      activemq:
+        condition: service_started
+      eureka-server:
+        condition: service_healthy

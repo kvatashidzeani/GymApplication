@@ -1,6 +1,7 @@
 package com.gymcrm.workload.messaging;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.gymcrm.workload.dto.WorkloadUpdateRequest;
 import jakarta.jms.ConnectionFactory;
 import org.apache.activemq.ActiveMQConnectionFactory;
 import org.springframework.beans.factory.annotation.Value;
@@ -14,9 +15,12 @@ import org.springframework.jms.support.converter.MappingJackson2MessageConverter
 import org.springframework.jms.support.converter.MessageConverter;
 import org.springframework.jms.support.converter.MessageType;
 
+import java.util.HashMap;
+import java.util.Map;
+
 @Configuration
 @EnableJms
-@Profile("!component-test")
+@Profile("!component-test & !docker")
 public class WorkloadJmsConfig {
 
     @Bean
@@ -39,6 +43,12 @@ public class WorkloadJmsConfig {
         converter.setObjectMapper(objectMapper);
         converter.setTargetType(MessageType.TEXT);
         converter.setTypeIdPropertyName("_type");
+        // Gym CRM publishes _type=com.gymcrm.client.WorkloadUpdateRequest
+        Map<String, Class<?>> typeIdMappings = new HashMap<>();
+        typeIdMappings.put("WorkloadUpdateRequest", WorkloadUpdateRequest.class);
+        typeIdMappings.put("com.gymcrm.client.WorkloadUpdateRequest", WorkloadUpdateRequest.class);
+        typeIdMappings.put("com.gymcrm.workload.dto.WorkloadUpdateRequest", WorkloadUpdateRequest.class);
+        converter.setTypeIdMappings(typeIdMappings);
         return converter;
     }
 

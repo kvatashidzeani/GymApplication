@@ -11,7 +11,7 @@ import java.util.Optional;
  * MongoDB-backed workload storage using {@link TrainerWorkloadRepository}.
  */
 @Component
-@Profile("!component-test")
+@Profile("!component-test & !docker")
 public class MongoWorkloadStorage implements WorkloadStorage {
 
     private final TrainerWorkloadRepository repository;

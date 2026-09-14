@@ -20,7 +20,7 @@ import java.util.stream.Collectors;
  * Invalid messages (missing required fields or auth) are forwarded to the DLQ.
  */
 @Component
-@Profile("!component-test")
+@Profile("!component-test & !docker")
 public class WorkloadMessageListener {
 
     private static final Logger log = LoggerFactory.getLogger(WorkloadMessageListener.class);

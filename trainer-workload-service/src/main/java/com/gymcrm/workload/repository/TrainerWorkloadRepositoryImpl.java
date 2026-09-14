@@ -12,7 +12,7 @@ import org.springframework.stereotype.Repository;
  * MongoTemplate-backed update implementation for {@link TrainerWorkloadRepository}.
  */
 @Repository
-@Profile("!component-test")
+@Profile("!component-test & !docker")
 public class TrainerWorkloadRepositoryImpl implements TrainerWorkloadRepositoryCustom {
 
     private final MongoTemplate mongoTemplate;

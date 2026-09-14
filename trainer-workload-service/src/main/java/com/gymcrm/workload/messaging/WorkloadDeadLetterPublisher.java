@@ -14,7 +14,7 @@ import java.util.Collections;
  * Forwards invalid workload JMS messages to the dead letter queue for later inspection.
  */
 @Component
-@Profile("!component-test")
+@Profile("!component-test & !docker")
 public class WorkloadDeadLetterPublisher {
 
     private static final Logger log = LoggerFactory.getLogger(WorkloadDeadLetterPublisher.class);
